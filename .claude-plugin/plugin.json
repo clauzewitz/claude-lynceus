@@ -1,0 +1,9 @@
+{
+  "name": "claude-lynceus",
+  "description": "Lynceus — the sharpest eye on your Claude Code session. 2-line statusline showing user, model, context, cost, rate limit, git branch, and code changes.",
+  "version": "3.0.0",
+  "author": {
+    "name": "claude-plugin-author"
+  },
+  "license": "MIT"
+}

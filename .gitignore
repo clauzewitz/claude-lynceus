@@ -1,0 +1,26 @@
+# ── OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── Editor / IDE ──────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Plugin cache / temp ───────────────────────────────────
+/tmp/lynceus-cache
+*.tmp
+
+# ── Install backup files ─────────────────────────────────
+settings.json.backup.*
+*.bak
+
+# ── Archive / dist ────────────────────────────────────────
+*.zip
+*.tar.gz
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
