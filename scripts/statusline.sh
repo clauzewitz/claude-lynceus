@@ -2,7 +2,7 @@
 # ══════════════════════════════════════════════════════════════════════
 # claude-lynceus v3 — Dan Does Code style 2-line statusline
 #
-# Line 1: 👤 User | 🤖 Model | 🧠 Context | 💰 Cost | ⏱️ 5h Rate Limit
+# Line 1: 👤 User | 🤖 Model | ⚡ Effort | 🧠 Context | 💰 Cost | ⏱️ 5h Rate Limit
 # Line 2: 🌿 Branch | +added -removed | 📦 used / total (%)
 # ══════════════════════════════════════════════════════════════════════
 
@@ -34,6 +34,10 @@ CWD=$(echo "$input" | jq -r '.workspace.current_dir // ""')
 # Rate limits (available since Claude Code v1.2.80)
 RL_5H_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.utilization // .rate_limits.five_hour.used_percentage // 0' 2>/dev/null | cut -d. -f1)
 RL_5H_RESETS=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // ""' 2>/dev/null)
+
+# Effort level (available since v2.1.131+)
+EFFORT=$(echo "$input" | jq -r '.effort.level // ""' 2>/dev/null)
+[ -z "$EFFORT" ] && EFFORT="${CLAUDE_EFFORT:-}"
 
 USED=$((INPUT_TOK + OUTPUT_TOK))
 
@@ -155,12 +159,26 @@ if [ "$RL_5H_PCT" -gt 0 ] 2>/dev/null || [ -n "$RL_RESET_STR" ]; then
   fi
 fi
 
+# ── Build effort segment ─────────────────────────────────────────────
+EFFORT_STR=""
+if [ -n "$EFFORT" ]; then
+  case "$EFFORT" in
+    low)    EFF_CLR="$GRY" ;;
+    medium) EFF_CLR="$GRN" ;;
+    high)   EFF_CLR="$YLW" ;;
+    xhigh)  EFF_CLR="$MAG" ;;
+    max)    EFF_CLR="$RED" ;;
+    *)      EFF_CLR="$GRY" ;;
+  esac
+  EFFORT_STR=" ${DIM}|${RST} ${BLD}⚡${RST} ${EFF_CLR}${EFFORT}${RST}"
+fi
+
 # ══════════════════════════════════════════════════════════════════════
 # OUTPUT: 2-line statusline
 # ══════════════════════════════════════════════════════════════════════
 
-# Line 1: 👤 User | 🤖 Model | 🧠 Context% | 💰 Cost | ⏱️ Rate Limit
-LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}${RL_STR}"
+# Line 1: 👤 User | 🤖 Model | ⚡ Effort | 🧠 Context% | 💰 Cost | ⏱️ Rate Limit
+LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${EFFORT_STR} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}${RL_STR}"
 
 # Line 2: 🌿 Branch +added -removed | 📦 used / total (%)
 LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${LINES_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"

@@ -2,7 +2,7 @@
 # ══════════════════════════════════════════════════════════════════════
 # claude-lynceus v3 LITE — no jq required (uses Python 3)
 #
-# Line 1: 👤 User | 🤖 Model | 🧠 Context | 💰 Cost | ⏱️ 5h Rate Limit
+# Line 1: 👤 User | 🤖 Model | ⚡ Effort | 🧠 Context | 💰 Cost | ⏱️ 5h Rate Limit
 # Line 2: 🌿 Branch | +added -removed | 📦 used / total (%)
 # ══════════════════════════════════════════════════════════════════════
 
@@ -21,6 +21,7 @@ try:
     cw = d.get('context_window', {})
     c = d.get('cost', {})
     rl = d.get('rate_limits', {}).get('five_hour', {})
+    eff = d.get('effort', {}).get('level', '')
     print(f'MODEL=\"{d.get(\"model\",{}).get(\"display_name\",\"—\")}\"')
     print(f'PCT={int(float(cw.get(\"used_percentage\",0)))}')
     print(f'TOTAL={int(cw.get(\"context_window_size\",0))}')
@@ -31,8 +32,9 @@ try:
     print(f'CWD=\"{d.get(\"workspace\",{}).get(\"current_dir\",\"\")}\"')
     print(f'RL_5H_PCT={int(float(rl.get(\"utilization\",rl.get(\"used_percentage\",0))))}')
     print(f'RL_5H_RESETS=\"{rl.get(\"resets_at\",\"\")}\"')
+    print(f'EFFORT=\"{eff}\"')
 except:
-    print('MODEL=\"—\"; PCT=0; TOTAL=0; USED=0; COST=0; LINES_ADD=0; LINES_DEL=0; CWD=\"\"; RL_5H_PCT=0; RL_5H_RESETS=\"\"')
+    print('MODEL=\"—\"; PCT=0; TOTAL=0; USED=0; COST=0; LINES_ADD=0; LINES_DEL=0; CWD=\"\"; RL_5H_PCT=0; RL_5H_RESETS=\"\"; EFFORT=\"\"')
 " <<< "$input")
 
 COST_FMT=$(printf '%.2f' "$COST" 2>/dev/null || echo "0.00")
@@ -101,8 +103,23 @@ if [ "$LINES_ADD" -gt 0 ] 2>/dev/null || [ "$LINES_DEL" -gt 0 ] 2>/dev/null; the
   LINES_STR=" ${GRN}+${LINES_ADD}${RST} ${RED}-${LINES_DEL}${RST}"
 fi
 
+# ── Effort segment ───────────────────────────────────────────────────
+[ -z "$EFFORT" ] && EFFORT="${CLAUDE_EFFORT:-}"
+EFFORT_STR=""
+if [ -n "$EFFORT" ]; then
+  case "$EFFORT" in
+    low)    EFF_CLR="$GRY" ;;
+    medium) EFF_CLR="$GRN" ;;
+    high)   EFF_CLR="$YLW" ;;
+    xhigh)  EFF_CLR="$MAG" ;;
+    max)    EFF_CLR="$RED" ;;
+    *)      EFF_CLR="$GRY" ;;
+  esac
+  EFFORT_STR=" ${DIM}|${RST} ${BLD}⚡${RST} ${EFF_CLR}${EFFORT}${RST}"
+fi
+
 # ── Output ────────────────────────────────────────────────────────────
-LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}${RL_STR}"
+LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${EFFORT_STR} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}${RL_STR}"
 LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${LINES_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
 
 echo "${LINE1}"
