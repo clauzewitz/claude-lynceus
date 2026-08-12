@@ -5,6 +5,37 @@
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-08-12
+
+## [3.4.0] - 2026-08-12
+
+### Added
+- 📅 7일 Rate Limit 표시 (`rate_limits.seven_day.used_percentage`, `resets_at`)
+- 📌 세션명 표시 (`session_name` — `--name` / `/rename` 또는 AI 생성 제목, 없으면 숨김)
+- 🔀 현재 브랜치의 열린 PR 표시 (`pr.number`, `pr.url`, `pr.review_state`)
+  - OSC 8 하이퍼링크로 PR 번호 클릭 가능 (iTerm2, Kitty, WezTerm 등)
+  - 리뷰 상태 아이콘: approved(✓), changes_requested(✗), pending(⋯), draft(○)
+- 🚀 Fast mode 배지 (`fast_mode`)
+- `refreshInterval: 10` 설정 — 세션 유휴 중에도 Rate Limit / PR 세그먼트 갱신
+- 설치 시 이전 버전 스크립트(`session-statusline.sh`) 자동 정리
+
+### Changed
+- 2줄 → 3줄 레이아웃. Line 3은 Rate Limit 전용이며, 데이터가 없으면 줄 전체가 숨겨져 기존 2줄로 표시됨
+- `statusline-lite.sh`가 `statusline.sh`와 완전한 기능 패리티 확보
+
+### Fixed
+- **캐시 파일이 모든 세션에서 공유되던 문제** — `/tmp/lynceus-cache` 고정 경로를
+  `/tmp/lynceus-cache-{session_id}`로 변경. 여러 프로젝트를 동시에 열었을 때 다른
+  프로젝트의 브랜치명이 표시되던 증상 해결
+- lite 버전에 5시간 Rate Limit 리셋 시각이 표시되지 않던 문제 (jq 버전과 불일치)
+- `uninstall.sh`가 이전 버전 파일명(`session-statusline.sh`)을 삭제하지 못하던 문제
+- lite 버전의 `eval` 셸 인젝션 가능성 — `session_name` 등 자유 문자열 필드를
+  `shlex.quote()`로 이스케이프
+- 공식 스키마에 없는 `rate_limits.five_hour.utilization` 참조 제거 (정식 필드는 `used_percentage`)
+- `install.sh` / `uninstall.sh`의 완료 메시지에 ANSI 이스케이프가 그대로 출력되던 문제
+  (`\033[1m설치가 완료되었습니다!\033[0m`) — 헬퍼 함수의 `printf` 포맷을 `%s` → `%b`로 변경.
+  `printf`는 포맷 문자열의 이스케이프만 해석하므로 인자로 넘긴 색상 코드는 처리되지 않았음
+
 ## [3.3.0] - 2026-05-20
 
 ### Added
@@ -62,7 +93,9 @@
 - `/session-status:status` 슬래시 명령어
 - `skills/session-status/SKILL.md` 스킬 정의
 
-[Unreleased]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.3.0...HEAD
+[Unreleased]: git@github-personal.com:clauzewitz/claude-lynceus/compare/v3.4.0...HEAD
+[3.4.0]: git@github-personal.com:clauzewitz/claude-lynceus/compare/v3.4.0...v3.4.0
+[3.4.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.1.0...v3.2.0
