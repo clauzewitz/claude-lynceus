@@ -1,9 +1,10 @@
 #!/bin/bash
 # ══════════════════════════════════════════════════════════════════════
-# claude-lynceus v3 — Dan Does Code style 2-line statusline
+# claude-lynceus v3.4 — Dan Does Code style 3-line statusline
 #
-# Line 1: 👤 User | 🤖 Model | ⚡ Effort | 🧠 Context | 💰 Cost | ⏱️ 5h Rate Limit
-# Line 2: 🌿 Branch | +added -removed | 📦 used / total (%)
+# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🧠 Context | 💰 Cost
+# Line 2: 🌿 Branch | +added -removed | 🔀 PR | 📦 used / total (%)
+# Line 3: ⏱️ 5h bar % reset | 7d bar % reset
 # ══════════════════════════════════════════════════════════════════════
 
 input=$(cat)
@@ -30,14 +31,28 @@ COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 LINES_ADD=$(echo "$input" | jq -r '.cost.total_lines_added // 0')
 LINES_DEL=$(echo "$input" | jq -r '.cost.total_lines_removed // 0')
 CWD=$(echo "$input" | jq -r '.workspace.current_dir // ""')
+SESSION_ID=$(echo "$input" | jq -r '.session_id // ""')
+
+# Session name: custom (--name / /rename) or AI-generated title. Absent for defaults.
+SESSION_NAME=$(echo "$input" | jq -r '.session_name // ""')
 
 # Rate limits (available since Claude Code v1.2.80)
-RL_5H_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.utilization // .rate_limits.five_hour.used_percentage // 0' 2>/dev/null | cut -d. -f1)
-RL_5H_RESETS=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // ""' 2>/dev/null)
+RL_5H_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // 0' | cut -d. -f1)
+RL_5H_RESETS=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // ""')
+RL_7D_PCT=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // 0' | cut -d. -f1)
+RL_7D_RESETS=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // ""')
 
 # Effort level (available since v2.1.131+)
-EFFORT=$(echo "$input" | jq -r '.effort.level // ""' 2>/dev/null)
+EFFORT=$(echo "$input" | jq -r '.effort.level // ""')
 [ -z "$EFFORT" ] && EFFORT="${CLAUDE_EFFORT:-}"
+
+# Fast mode
+FAST_MODE=$(echo "$input" | jq -r '.fast_mode // false')
+
+# Open PR for the current branch
+PR_NUM=$(echo "$input" | jq -r '.pr.number // ""')
+PR_URL=$(echo "$input" | jq -r '.pr.url // ""')
+PR_STATE=$(echo "$input" | jq -r '.pr.review_state // ""')
 
 USED=$((INPUT_TOK + OUTPUT_TOK))
 
@@ -49,8 +64,8 @@ fmt() { echo "$1" | rev | sed 's/[0-9]\{3\}/&,/g' | rev | sed 's/^,//'; }
 USED_FMT=$(fmt "$USED")
 TOTAL_FMT=$(fmt "$TOTAL")
 
-# ── Cache for git info ────────────────────────────────────────────────
-CACHE_FILE="/tmp/lynceus-cache"
+# ── Cache for git info (per session, so parallel sessions don't collide) ──
+CACHE_FILE="/tmp/lynceus-cache-${SESSION_ID:-default}"
 CACHE_MAX_AGE=5
 
 cache_is_stale() {
@@ -102,7 +117,7 @@ else
   CTX_CLR="$RED"
 fi
 
-# ── 5h rate limit bar ────────────────────────────────────────────────
+# ── Rate limit helpers ───────────────────────────────────────────────
 make_bar() {
   local pct=$1 width=${2:-10}
   local filled=$(( pct * width / 100 ))
@@ -113,36 +128,54 @@ make_bar() {
   echo "$bar"
 }
 
-RL_BAR=$(make_bar "$RL_5H_PCT" 10)
+pct_color() {
+  if [ "$1" -lt 50 ] 2>/dev/null; then
+    echo "$GRN"
+  elif [ "$1" -lt 80 ] 2>/dev/null; then
+    echo "$YLW"
+  else
+    echo "$RED"
+  fi
+}
 
-if [ "$RL_5H_PCT" -lt 50 ] 2>/dev/null; then
-  RL_CLR="$GRN"
-elif [ "$RL_5H_PCT" -lt 80 ] 2>/dev/null; then
-  RL_CLR="$YLW"
-else
-  RL_CLR="$RED"
-fi
-
-# Format reset time
-RL_RESET_STR=""
-if [ -n "$RL_5H_RESETS" ] && [ "$RL_5H_RESETS" != "null" ] && [ "$RL_5H_RESETS" != "" ]; then
-  # Try parsing ISO format first, then unix timestamp
-  if echo "$RL_5H_RESETS" | grep -qE '^[0-9]+$'; then
-    # Unix timestamp
+# resets_at is unix epoch seconds; older builds sent ISO 8601, so handle both.
+fmt_reset() {
+  local ts="$1" out_fmt="$2"
+  if [ -z "$ts" ] || [ "$ts" = "null" ]; then
+    echo ""
+    return
+  fi
+  if echo "$ts" | grep -qE '^[0-9]+$'; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
-      RL_RESET_STR=$(date -r "$RL_5H_RESETS" '+%H:%M' 2>/dev/null)
+      date -r "$ts" "$out_fmt" 2>/dev/null
     else
-      RL_RESET_STR=$(date -d "@$RL_5H_RESETS" '+%H:%M' 2>/dev/null)
+      date -d "@$ts" "$out_fmt" 2>/dev/null
     fi
   else
-    # ISO format
     if [[ "$OSTYPE" == "darwin"* ]]; then
-      RL_RESET_STR=$(date -jf '%Y-%m-%dT%H:%M:%S' "${RL_5H_RESETS%%.*}" '+%H:%M' 2>/dev/null)
+      date -jf '%Y-%m-%dT%H:%M:%S' "${ts%%.*}" "$out_fmt" 2>/dev/null
     else
-      RL_RESET_STR=$(date -d "$RL_5H_RESETS" '+%H:%M' 2>/dev/null)
+      date -d "$ts" "$out_fmt" 2>/dev/null
     fi
   fi
-fi
+}
+
+# Build one "5h ████░░░░░░ 45% reset 16:06" segment
+rl_segment() {
+  local label=$1 pct=$2 resets=$3 out_fmt=$4
+  local reset_str=$(fmt_reset "$resets" "$out_fmt")
+  if [ "$pct" -le 0 ] 2>/dev/null && [ -z "$reset_str" ]; then
+    echo ""
+    return
+  fi
+  local clr=$(pct_color "$pct")
+  local seg="${GRY}${label}${RST} ${clr}$(make_bar "$pct" 10) ${pct}%${RST}"
+  [ -n "$reset_str" ] && seg+=" ${GRY}reset ${reset_str}${RST}"
+  echo "$seg"
+}
+
+RL_5H_SEG=$(rl_segment "5h" "$RL_5H_PCT" "$RL_5H_RESETS" '+%H:%M')
+RL_7D_SEG=$(rl_segment "7d" "$RL_7D_PCT" "$RL_7D_RESETS" '+%-m/%-d %H:%M')
 
 # ── Lines changed string ─────────────────────────────────────────────
 LINES_STR=""
@@ -150,14 +183,15 @@ if [ "$LINES_ADD" -gt 0 ] 2>/dev/null || [ "$LINES_DEL" -gt 0 ] 2>/dev/null; the
   LINES_STR=" ${GRN}+${LINES_ADD}${RST} ${RED}-${LINES_DEL}${RST}"
 fi
 
-# ── Build rate limit segment ─────────────────────────────────────────
-RL_STR=""
-if [ "$RL_5H_PCT" -gt 0 ] 2>/dev/null || [ -n "$RL_RESET_STR" ]; then
-  RL_STR=" ${DIM}|${RST} ${BLD}⏱️${RST} ${GRY}5h${RST} ${RL_CLR}${RL_BAR} ${RL_5H_PCT}%${RST}"
-  if [ -n "$RL_RESET_STR" ]; then
-    RL_STR+=" ${GRY}reset ${RL_RESET_STR}${RST}"
-  fi
+# ── Build session name segment ───────────────────────────────────────
+SESSION_STR=""
+if [ -n "$SESSION_NAME" ]; then
+  SESSION_STR=" ${DIM}·${RST} ${BLD}📌${RST} ${BLU}${SESSION_NAME}${RST}"
 fi
+
+# ── Build fast mode badge ────────────────────────────────────────────
+FAST_STR=""
+[ "$FAST_MODE" = "true" ] && FAST_STR=" 🚀"
 
 # ── Build effort segment ─────────────────────────────────────────────
 EFFORT_STR=""
@@ -173,15 +207,46 @@ if [ -n "$EFFORT" ]; then
   EFFORT_STR=" ${DIM}|${RST} ${BLD}⚡${RST} ${EFF_CLR}${EFFORT}${RST}"
 fi
 
+# ── Build PR segment (OSC 8 hyperlink when a URL is available) ───────
+PR_STR=""
+if [ -n "$PR_NUM" ]; then
+  case "$PR_STATE" in
+    approved)          PR_MARK=" ${GRN}✓${RST}" ;;
+    changes_requested) PR_MARK=" ${RED}✗${RST}" ;;
+    pending)           PR_MARK=" ${YLW}⋯${RST}" ;;
+    draft)             PR_MARK=" ${GRY}○${RST}" ;;
+    *)                 PR_MARK="" ;;
+  esac
+  PR_LABEL="#${PR_NUM}"
+  if [ -n "$PR_URL" ]; then
+    PR_LABEL=$'\033]8;;'"${PR_URL}"$'\a'"#${PR_NUM}"$'\033]8;;\a'
+  fi
+  PR_STR=" ${DIM}|${RST} ${BLD}🔀${RST} ${CYN}${PR_LABEL}${RST}${PR_MARK}"
+fi
+
 # ══════════════════════════════════════════════════════════════════════
-# OUTPUT: 2-line statusline
+# OUTPUT: 3-line statusline
 # ══════════════════════════════════════════════════════════════════════
 
-# Line 1: 👤 User | 🤖 Model | ⚡ Effort | 🧠 Context% | 💰 Cost | ⏱️ Rate Limit
-LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${EFFORT_STR} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}${RL_STR}"
+# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🧠 Context% | 💰 Cost
+LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST}${SESSION_STR} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${FAST_STR}${EFFORT_STR} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}"
 
-# Line 2: 🌿 Branch +added -removed | 📦 used / total (%)
-LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${LINES_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
+# Line 2: 🌿 Branch +added -removed | 🔀 PR | 📦 used / total (%)
+LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${LINES_STR}${PR_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
 
 echo "${LINE1}"
-echo -n "${LINE2}"
+
+# Line 3: ⏱️ 5h bar % reset | 7d bar % reset — hidden when no rate limit data
+if [ -n "$RL_5H_SEG" ] || [ -n "$RL_7D_SEG" ]; then
+  echo "${LINE2}"
+  LINE3="${BLD}⏱️${RST} "
+  if [ -n "$RL_5H_SEG" ]; then
+    LINE3+="$RL_5H_SEG"
+    [ -n "$RL_7D_SEG" ] && LINE3+=" ${DIM}|${RST} $RL_7D_SEG"
+  else
+    LINE3+="$RL_7D_SEG"
+  fi
+  echo -n "${LINE3}"
+else
+  echo -n "${LINE2}"
+fi

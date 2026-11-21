@@ -10,6 +10,10 @@ Desktop.ini
 *.swo
 *~
 
+# ── Claude Code local settings ────────────────────────────
+# 프로젝트별 로컬 설정. .claude-plugin/ 은 플러그인 메타데이터이므로 제외 대상이 아님
+.claude/
+
 # ── Plugin cache / temp ───────────────────────────────────
 /tmp/lynceus-cache
 *.tmp

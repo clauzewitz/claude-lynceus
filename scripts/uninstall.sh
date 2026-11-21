@@ -10,12 +10,17 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-info()  { printf "${CYAN}ℹ${RESET}  %s\n" "$1"; }
-ok()    { printf "${GREEN}✔${RESET}  %s\n" "$1"; }
+info()  { printf "${CYAN}ℹ${RESET}  %b\n" "$1"; }
+ok()    { printf "${GREEN}✔${RESET}  %b\n" "$1"; }
 
 CLAUDE_DIR="$HOME/.claude"
-DEST_SCRIPT="$CLAUDE_DIR/lynceus-statusline.sh"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
+
+# Current name first, then names used by older releases
+TARGET_SCRIPTS=(
+  "$CLAUDE_DIR/lynceus-statusline.sh"
+  "$CLAUDE_DIR/session-statusline.sh"
+)
 
 echo ""
 printf "${BOLD}📊 Claude Lynceus — Uninstaller${RESET}\n"
@@ -23,10 +28,15 @@ echo "────────────────────────�
 echo ""
 
 # ── Remove script ─────────────────────────────────────────────────────
-if [ -f "$DEST_SCRIPT" ]; then
-  rm "$DEST_SCRIPT"
-  ok "스크립트 삭제 완료: $DEST_SCRIPT"
-else
+REMOVED=false
+for target in "${TARGET_SCRIPTS[@]}"; do
+  if [ -f "$target" ]; then
+    rm "$target"
+    ok "스크립트 삭제 완료: $target"
+    REMOVED=true
+  fi
+done
+if [ "$REMOVED" = false ]; then
   info "스크립트가 이미 없습니다"
 fi
 
@@ -44,7 +54,8 @@ if [ -f "$SETTINGS_FILE" ]; then
 fi
 
 # ── Clean up cache ────────────────────────────────────────────────────
-rm -f /tmp/lynceus-cache
+# v3.4+ caches per session; older versions used a single shared file
+rm -f /tmp/lynceus-cache /tmp/lynceus-cache-*
 ok "캐시 파일 정리 완료"
 
 echo ""

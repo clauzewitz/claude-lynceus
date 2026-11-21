@@ -13,10 +13,10 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-info()  { printf "${CYAN}ℹ${RESET}  %s\n" "$1"; }
-ok()    { printf "${GREEN}✔${RESET}  %s\n" "$1"; }
-warn()  { printf "${YELLOW}⚠${RESET}  %s\n" "$1"; }
-fail()  { printf "${RED}✖${RESET}  %s\n" "$1"; exit 1; }
+info()  { printf "${CYAN}ℹ${RESET}  %b\n" "$1"; }
+ok()    { printf "${GREEN}✔${RESET}  %b\n" "$1"; }
+warn()  { printf "${YELLOW}⚠${RESET}  %b\n" "$1"; }
+fail()  { printf "${RED}✖${RESET}  %b\n" "$1"; exit 1; }
 
 # ── Resolve paths ─────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,6 +26,9 @@ SOURCE_SCRIPT="$PLUGIN_ROOT/scripts/statusline.sh"
 CLAUDE_DIR="$HOME/.claude"
 DEST_SCRIPT="$CLAUDE_DIR/lynceus-statusline.sh"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
+
+# Script names used by older releases, cleaned up on install
+LEGACY_SCRIPTS=("$CLAUDE_DIR/session-statusline.sh")
 
 echo ""
 printf "${BOLD}📊 Claude Lynceus — Installer${RESET}\n"
@@ -76,6 +79,14 @@ fi
 chmod +x "$DEST_SCRIPT"
 ok "스크립트 복사 완료 → $DEST_SCRIPT"
 
+# Remove scripts left behind by older releases
+for legacy in "${LEGACY_SCRIPTS[@]}"; do
+  if [ -f "$legacy" ]; then
+    rm -f "$legacy"
+    ok "이전 버전 스크립트 정리: $legacy"
+  fi
+done
+
 # ── Step 4: Ask for Claude nickname (optional) ────────────────────────
 echo ""
 info "Claude 계정 닉네임을 설정하시겠습니까?"
@@ -96,10 +107,13 @@ fi
 # ── Step 5: Update settings.json ──────────────────────────────────────
 info "settings.json을 업데이트합니다..."
 
+# refreshInterval keeps the rate-limit and PR segments current while the
+# session sits idle, since those change without an assistant message.
 STATUSLINE_CONFIG='{
   "type": "command",
   "command": "~/.claude/lynceus-statusline.sh",
-  "padding": 1
+  "padding": 1,
+  "refreshInterval": 10
 }'
 
 if [ -f "$SETTINGS_FILE" ]; then
@@ -128,12 +142,13 @@ if [ -f "$SETTINGS_FILE" ]; then
       echo '   "statusLine": {'
       echo '     "type": "command",'
       echo '     "command": "~/.claude/lynceus-statusline.sh",'
-      echo '     "padding": 1'
+      echo '     "padding": 1,'
+      echo '     "refreshInterval": 10'
       echo '   }'
       echo ""
     else
       # Insert before the last closing brace
-      sed -i.bak 's/}$/,\n  "statusLine": {\n    "type": "command",\n    "command": "~\/.claude\/lynceus-statusline.sh",\n    "padding": 1\n  }\n}/' "$SETTINGS_FILE"
+      sed -i.bak 's/}$/,\n  "statusLine": {\n    "type": "command",\n    "command": "~\/.claude\/lynceus-statusline.sh",\n    "padding": 1,\n    "refreshInterval": 10\n  }\n}/' "$SETTINGS_FILE"
       rm -f "${SETTINGS_FILE}.bak"
     fi
   fi
@@ -148,7 +163,8 @@ else
   "statusLine": {
     "type": "command",
     "command": "~/.claude/lynceus-statusline.sh",
-    "padding": 1
+    "padding": 1,
+    "refreshInterval": 10
   }
 }
 EOF
@@ -158,7 +174,8 @@ EOF
   "statusLine": {
     "type": "command",
     "command": "~/.claude/lynceus-statusline.sh",
-    "padding": 1
+    "padding": 1,
+    "refreshInterval": 10
   }
 }
 EOF
@@ -181,12 +198,16 @@ if [ -f "$DEST_SCRIPT" ] && [ -x "$DEST_SCRIPT" ]; then
   echo ""
   if [ -n "$NICK_INPUT" ]; then
     echo "   표시 예시:"
-    echo "   👤 $NICK_INPUT | 🌿 main | 📦 12,400 / 200,000 (6%) ▓░░░░░░░░░"
+    echo "   👤 $NICK_INPUT | 🤖 Opus 5 | ⚡ high | 🧠 6% | 💰 \$0.12"
+    echo "   🌿 main | 📦 12,400 / 200,000 (6%)"
+    echo "   ⏱️ 5h ██░░░░░░░░ 21% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00"
     echo ""
     echo "   닉네임 변경: ~/.claude/settings.json 의 CLAUDE_USER_NICK 수정"
   else
     echo "   표시 예시:"
-    echo "   👤 git-username | 🌿 main | 📦 12,400 / 200,000 (6%) ▓░░░░░░░░░"
+    echo "   👤 git-username | 🤖 Opus 5 | ⚡ high | 🧠 6% | 💰 \$0.12"
+    echo "   🌿 main | 📦 12,400 / 200,000 (6%)"
+    echo "   ⏱️ 5h ██░░░░░░░░ 21% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00"
     echo ""
     echo "   닉네임 추가: ~/.claude/settings.json 에 아래 내용 추가"
     echo '   "env": { "CLAUDE_USER_NICK": "내닉네임" }'
