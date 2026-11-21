@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-11-21
+
+### Added
+- 터미널 폭 맞춤 — Claude Code가 넘겨주는 `COLUMNS`(v2.1.153+)에 맞춰, 줄이 `COLUMNS - 2`열보다 넓으면
+  설정·식별 정보(📌 세션명, ⚡ Effort, 🌲 worktree, 🔀 PR, 리셋 시각, 💭 thinking, 📁 저장소 등)부터
+  줄마다 정해진 순서로 숨기고, 그래도 넘치면 줄 끝을 `…`로 자름. `COLUMNS`가 없으면 이전과 같은 출력
+- ♻️ 프롬프트 캐시 (Line 4, `prompt_cache`, v2.1.251+) — `warm 42m`(만료까지 남은 시간) 또는 `cold`,
+  적중률(`hit_ratio`), 미스 횟수(`misses`, 0이면 숨김). `prompt_cache`가 없거나 `null`이거나
+  `caching_observed`가 `false`면 숨김
+
+### Fixed
+- `release.sh`가 SSH 호스트 별칭을 쓰는 origin(`git@<별칭>:owner/repo`)을 https 주소로 바꾸지 못해
+  CHANGELOG 비교 링크에 SSH 주소가 들어가던 문제 — 모든 `git@<host>:` 형식을 `https://github.com/`으로
+  바꾸고, https origin에 들어 있는 사용자명·토큰은 링크에서 제거
+
 ## [3.4.2] - 2026-11-21
 
 ### Added
@@ -141,7 +156,8 @@
 - `/session-status:status` 슬래시 명령어
 - `skills/session-status/SKILL.md` 스킬 정의
 
-[Unreleased]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.2...HEAD
+[Unreleased]: https://github.com/clauzewitz/claude-lynceus/compare/v3.5.0...HEAD
+[3.5.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.2...v3.5.0
 [3.4.2]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.1...v3.4.2
 [3.4.1]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.0...v3.4.1
 [3.4.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.3.0...v3.4.0
