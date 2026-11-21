@@ -28,7 +28,10 @@ DEST_SCRIPT="$CLAUDE_DIR/lynceus-statusline.sh"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 
 # Script names used by older releases, cleaned up on install
-LEGACY_SCRIPTS=("$CLAUDE_DIR/session-statusline.sh")
+LEGACY_SCRIPTS=(
+  "$CLAUDE_DIR/session-statusline.sh"
+  "$CLAUDE_DIR/claude-lynceusline.sh"
+)
 
 echo ""
 printf "${BOLD}📊 Claude Lynceus — Installer${RESET}\n"
@@ -198,14 +201,14 @@ if [ -f "$DEST_SCRIPT" ] && [ -x "$DEST_SCRIPT" ]; then
   echo ""
   if [ -n "$NICK_INPUT" ]; then
     echo "   표시 예시:"
-    echo "   👤 $NICK_INPUT | 🤖 Opus 5 | ⚡ high | 🧠 6% | 💰 \$0.12"
+    echo "   👤 $NICK_INPUT | 🤖 Opus 5.5 | ⚡ high | 🧠 6% | 💰 \$0.12"
     echo "   🌿 main | 📦 12,400 / 200,000 (6%)"
     echo "   ⏱️ 5h ██░░░░░░░░ 21% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00"
     echo ""
     echo "   닉네임 변경: ~/.claude/settings.json 의 CLAUDE_USER_NICK 수정"
   else
     echo "   표시 예시:"
-    echo "   👤 git-username | 🤖 Opus 5 | ⚡ high | 🧠 6% | 💰 \$0.12"
+    echo "   👤 git-username | 🤖 Opus 5.5 | ⚡ high | 🧠 6% | 💰 \$0.12"
     echo "   🌿 main | 📦 12,400 / 200,000 (6%)"
     echo "   ⏱️ 5h ██░░░░░░░░ 21% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00"
     echo ""

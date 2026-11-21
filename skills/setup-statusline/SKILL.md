@@ -25,11 +25,11 @@ bottom of the Claude Code terminal.
 # Find the plugin's script location and copy it
 PLUGIN_DIR=$(find ~/.claude/plugins -name "claude-lynceus" -type d 2>/dev/null | head -1)
 if [ -n "$PLUGIN_DIR" ]; then
-  cp "$PLUGIN_DIR/scripts/statusline.sh" ~/.claude/claude-lynceusline.sh
+  cp "$PLUGIN_DIR/scripts/statusline.sh" ~/.claude/lynceus-statusline.sh
 else
   echo "Plugin directory not found. Please provide the plugin path."
 fi
-chmod +x ~/.claude/claude-lynceusline.sh
+chmod +x ~/.claude/lynceus-statusline.sh
 ```
 
 2. Add the statusline configuration to `~/.claude/settings.json`:
@@ -38,11 +38,11 @@ Use `jq` to merge safely:
 ```bash
 SETTINGS_FILE=~/.claude/settings.json
 if [ -f "$SETTINGS_FILE" ]; then
-  jq '. + {"statusLine": {"type": "command", "command": "~/.claude/claude-lynceusline.sh", "padding": 1}}' \
+  jq '. + {"statusLine": {"type": "command", "command": "~/.claude/lynceus-statusline.sh", "padding": 1, "refreshInterval": 10}}' \
     "$SETTINGS_FILE" > /tmp/claude-settings-tmp.json && \
     mv /tmp/claude-settings-tmp.json "$SETTINGS_FILE"
 else
-  echo '{"statusLine": {"type": "command", "command": "~/.claude/claude-lynceusline.sh", "padding": 1}}' \
+  echo '{"statusLine": {"type": "command", "command": "~/.claude/lynceus-statusline.sh", "padding": 1, "refreshInterval": 10}}' \
     > "$SETTINGS_FILE"
 fi
 ```

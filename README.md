@@ -5,8 +5,8 @@ Claude Code 터미널 하단에 **항상 표시되는 3줄 상태 바**를 추�
 ## 미리보기
 
 ```
-👤 주인 · 📌 statusline-v34 | 🤖 Opus 5 🚀 | ⚡ high | 🧠 64% | 💰 $13.86
-🌿 feature/DPDD-2206 +1932 -73 | 🔀 #1234 ✓ | 📦 96,737 / 200,000 (64%)
+👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 🧠 64% | 💰 $13.86
+🌿 feature/DPDD-2206 +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
 ⏱️ 5h ████░░░░░░ 45% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00
 ```
 
@@ -22,7 +22,7 @@ Claude Code 터미널 하단에 **항상 표시되는 3줄 상태 바**를 추�
 | 📌 | 세션명 | `session_name` | `--name` / `/rename` 또는 AI 생성 제목, 없으면 숨김 |
 | 🤖 | 모델명 | `model.display_name` | |
 | 🚀 | Fast mode | `fast_mode` | 켜져 있을 때만 표시 |
-| ⚡ | Effort 레벨 | `effort.level` → `$CLAUDE_EFFORT` | v2.1.131+, 색상 변동, 없으면 숨김 |
+| ⚡ | Effort 레벨 | `effort.level` | v2.1.119+, 색상 변동, 없으면 숨김 |
 | 🧠 | 컨텍스트 사용률 | `context_window.used_percentage` | 색상 변동 |
 | 💰 | 세션 비용 | `cost.total_cost_usd` | USD 표시 |
 
@@ -32,8 +32,8 @@ Claude Code 터미널 하단에 **항상 표시되는 3줄 상태 바**를 추�
 |--------|------|-------------|------|
 | 🌿 | git 브랜치 | `git branch --show-current` | 미연결 시 — 표시 |
 | +/- | 코드 변경량 | `cost.total_lines_added/removed` | 0이면 자동 숨김 |
-| 🔀 | 열린 PR | `pr.number`, `pr.url`, `pr.review_state` | OSC 8 클릭 링크, 없으면 숨김 |
-| 📦 | 토큰 사용량 | `total_input_tokens + total_output_tokens` | 쉼표 포맷 |
+| 🔀 | 열린 PR | `pr.number`, `pr.url`, `pr.review_state`, `pr.kind` | OSC 8 클릭 링크, GitLab MR은 `!번호`, 없으면 숨김 |
+| 📦 | 토큰 사용량 | `total_input_tokens` | 쉼표 포맷. `used_percentage`와 같은 입력 토큰 기준 (출력 토큰 제외) |
 | | 전체 토큰 / 백분율 | `context_window_size`, `used_percentage` | 색상 변동 |
 
 ### Line 3 — Rate Limit
@@ -71,7 +71,7 @@ Claude Code 터미널 하단에 **항상 표시되는 3줄 상태 바**를 추�
 | low | 그레이 | 최소 사고, 빠른 응답 |
 | medium | 세이지 그린 | 기본값 |
 | high | 옐로 | 깊은 사고 |
-| xhigh | 마젠타 | high~max 사이. ultracode도 `xhigh`로 보고됨 |
+| xhigh | 마젠타 | high~max 사이. `--effort ultracode`로 시작한 세션도 `xhigh`로 보고됨 (ultracode 자체는 표시되지 않음) |
 | max | 레드 | 최대 사고, 최대 토큰 소모 |
 
 effort를 지원하지 않는 모델에서는 필드 자체가 오지 않아 세그먼트가 숨겨집니다.
@@ -82,7 +82,7 @@ effort를 지원하지 않는 모델에서는 필드 자체가 오지 않아 세
 
 - 📌 세션명: `--name` / `/rename` 미사용이고 AI 제목도 없으면 숨김
 - 🚀 Fast mode: 꺼져 있으면 숨김
-- ⚡ Effort: JSON에 effort 필드가 없으면 숨김 (v2.1.131 미만 호환)
+- ⚡ Effort: JSON에 effort 필드가 없으면 숨김 (v2.1.119 미만, effort 미지원 모델)
 - 🔀 PR: 현재 브랜치에 열린 PR이 없으면 숨김
 - +/- 코드 변경량: 추가/삭제 모두 0이면 숨김
 - ⏱️ Rate Limit: 5h·7d 모두 사용량 0%이고 리셋 시각이 없으면 **Line 3 전체 숨김**
@@ -113,9 +113,10 @@ Claude 닉네임을 사용하려면 `~/.claude/settings.json`에 추가하세요
 
 ## 사전 요구사항
 
-- **Claude Code** v2.1.131 이상 권장
-  - v1.2.80+ : Rate Limit 데이터
-  - v2.1.131+ : ⚡ Effort 레벨
+- **Claude Code** v2.1.145 이상 권장
+  - v2.1.80+ : Rate Limit 데이터 (claude.ai Pro / Max / Ultra 구독)
+  - v2.1.119+ : ⚡ Effort 레벨
+  - v2.1.145+ : 🔀 PR 정보 (GitLab MR은 v2.1.234+)
   - 그 이하 버전에서도 동작하며, 지원하지 않는 세그먼트만 자동으로 숨겨집니다
 - **jq** (권장) 또는 **Python 3** (jq 없으면 자동 경량 모드)
 
@@ -231,11 +232,12 @@ claude-lynceus/
 │   ├── uninstall.sh                 # 자동 제거
 │   └── release.sh                   # 릴리즈 자동화
 ├── skills/
-│   └── setup-statusline/
-│       └── SKILL.md                 # 설치/설정 도우미
-├── commands/
-│   ├── install.md                   # /claude-lynceus:install
-│   └── uninstall.md                 # /claude-lynceus:uninstall
+│   ├── setup-statusline/
+│   │   └── SKILL.md                 # 설치/설정 도우미
+│   ├── install/
+│   │   └── SKILL.md                 # /claude-lynceus:install
+│   └── uninstall/
+│       └── SKILL.md                 # /claude-lynceus:uninstall
 ├── CHANGELOG.md                     # 버전별 변경 이력
 ├── .gitignore
 └── README.md
@@ -277,7 +279,7 @@ bash scripts/release.sh 3.5.0
 | 상태 바가 안 보임 | `settings.json`에 `statusLine` 설정 확인 후 재시작 |
 | 빈 줄만 표시됨 | `jq` 또는 `python3` 설치 확인 |
 | 브랜치가 안 바뀜 | 캐시(5초) 때문. 잠시 기다리면 갱신 |
-| Rate Limit이 안 보임 | Claude Code v1.2.80 이상 필요. 세션 초반엔 자동 숨김 |
+| Rate Limit이 안 보임 | Claude Code v2.1.80 이상, claude.ai Pro / Max / Ultra 구독 필요. 세션 초반엔 자동 숨김 |
 | Rate Limit이 멈춰 있음 | `refreshInterval`을 설정. 없으면 이벤트 발생 시에만 갱신됨 |
 | 비용이 $0.00 | 첫 API 응답 전까지 비용 데이터 없음 |
 | PR 번호가 클릭 안 됨 | OSC 8 지원 터미널 필요 (iTerm2, Kitty, WezTerm 등) |

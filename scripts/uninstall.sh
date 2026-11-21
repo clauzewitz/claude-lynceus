@@ -20,6 +20,7 @@ SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 TARGET_SCRIPTS=(
   "$CLAUDE_DIR/lynceus-statusline.sh"
   "$CLAUDE_DIR/session-statusline.sh"
+  "$CLAUDE_DIR/claude-lynceusline.sh"
 )
 
 echo ""

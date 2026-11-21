@@ -12,8 +12,8 @@ Copy the `statusline.sh` script from this plugin's `scripts/` directory to the
 user's Claude config directory:
 
 ```bash
-cp <plugin-path>/scripts/statusline.sh ~/.claude/claude-lynceusline.sh
-chmod +x ~/.claude/claude-lynceusline.sh
+cp <plugin-path>/scripts/statusline.sh ~/.claude/lynceus-statusline.sh
+chmod +x ~/.claude/lynceus-statusline.sh
 ```
 
 Replace `<plugin-path>` with the actual path where this plugin is located.
@@ -28,8 +28,9 @@ the file back. The configuration should look like:
 {
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/claude-lynceusline.sh",
-    "padding": 1
+    "command": "~/.claude/lynceus-statusline.sh",
+    "padding": 1,
+    "refreshInterval": 10
   }
 }
 ```
