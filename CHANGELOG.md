@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+## [3.4.2] - 2026-11-21
+
+### Added
+- Line 4 — 세션 세부 줄. 표시할 값이 없으면 줄 전체가 숨겨지고, Rate Limit 줄이 없으면 3번째 줄에 표시됨
+  - 📁 저장소 `owner/repo` (`workspace.repo`)
+  - ⏳ 세션 경과 시간 (`cost.total_duration_ms`, `45s` / `12m` / `1h23m`)
+  - 📥 컨텍스트 세부 — 캐시 읽기와 새 입력을 구분 (`context_window.current_usage`,
+    `cache` = `cache_read_input_tokens`, `new` = `input_tokens` + `cache_creation_input_tokens`)
+  - 💭 Extended thinking 켜짐 표시 (`thinking.enabled`)
+- 🌲 worktree 표시 — 링크된 git worktree(`workspace.git_worktree`) 또는 `--worktree` 세션(`worktree.name`)일 때
+  브랜치 옆에 표시
+- 새 세그먼트는 모두 필드가 없거나 `null`이면 숨겨지고, 문자열은 기존과 같이 제어문자를 제거함
+
 ## [3.4.1] - 2026-11-21
 
 ### Fixed
@@ -123,7 +136,8 @@
 - `/session-status:status` 슬래시 명령어
 - `skills/session-status/SKILL.md` 스킬 정의
 
-[Unreleased]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.1...HEAD
+[Unreleased]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.2...HEAD
+[3.4.2]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.1...v3.4.2
 [3.4.1]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.0...v3.4.1
 [3.4.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.2.1...v3.3.0
