@@ -7,8 +7,8 @@ Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**�
 넓은 터미널(`COLUMNS` 120)에서의 출력입니다. 좁은 터미널에서는 [터미널 폭 맞춤](#터미널-폭-맞춤)을 참고하세요.
 
 ```
-👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 💰 $13.86
-🌿 feature/DPDD-2206 🌲 +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
+👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 🎭 security-reviewer | 💰 $13.86
+🌿 feature/DPDD-2206 🌲 feature-xyz +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
 ⏱️ 5h ████░░░░░░ 45% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00
 📁 clauzewitz/claude-lynceus | ⏳ 1h23m | 📥 cache 112k · new 16k | ♻️ warm 42m · hit 91% | 💭 thinking
 ```
@@ -26,6 +26,7 @@ Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**�
 | 🤖 | 모델명 | `model.display_name` | |
 | 🚀 | Fast mode | `fast_mode` | 켜져 있을 때만 표시 |
 | ⚡ | Effort 레벨 | `effort.level` | v2.1.119+, 색상 변동, 없으면 숨김 |
+| 🎭 | Agent | `agent.name` | `--agent` 플래그나 agent 설정으로 실행했을 때만 표시 |
 | 💰 | 세션 비용 | `cost.total_cost_usd` | USD 표시 |
 
 ### Line 2 — git 컨텍스트
@@ -33,7 +34,7 @@ Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**�
 | 아이콘 | 속성 | 데이터 소스 | 비고 |
 |--------|------|-------------|------|
 | 🌿 | git 브랜치 | `git branch --show-current` | 미연결 시 — 표시 |
-| 🌲 | worktree | `workspace.git_worktree` → `worktree.name` | 링크된 git worktree(v2.1.97+) 또는 `--worktree` 세션(v2.1.69+)일 때만 표시 |
+| 🌲 | worktree | `workspace.git_worktree` → `worktree.name` | 링크된 git worktree(v2.1.97+) 또는 `--worktree` 세션(v2.1.69+)일 때만 표시. worktree 이름이 브랜치명과 다르면 🌲 뒤에 회색으로 함께 표시 |
 | +/- | 코드 변경량 | `cost.total_lines_added/removed` | 0이면 자동 숨김 |
 | 🔀 | 열린 PR | `pr.number`, `pr.url`, `pr.review_state`, `pr.kind` | OSC 8 클릭 링크, GitLab MR은 `!번호`, 없으면 숨김 |
 | 📦 | 토큰 사용량 | `total_input_tokens` | 쉼표 포맷. `used_percentage`와 같은 입력 토큰 기준 (출력 토큰 제외) |
@@ -96,12 +97,13 @@ effort를 지원하지 않는 모델에서는 필드 자체가 오지 않아 세
 데이터가 없는 세션 초반에는 불필요한 항목이 자동으로 숨겨집니다.
 
 - 📌 세션명: `--name` / `/rename` 미사용이고 AI 제목도 없으면 숨김
+- 🎭 Agent: `--agent` 플래그나 agent 설정 없이 실행하면 숨김
 - 🚀 Fast mode: 꺼져 있으면 숨김
 - ⚡ Effort: JSON에 effort 필드가 없으면 숨김 (v2.1.119 미만, effort 미지원 모델)
 - 🔀 PR: 현재 브랜치에 열린 PR이 없으면 숨김
 - +/- 코드 변경량: 추가/삭제 모두 0이면 숨김
 - ⏱️ Rate Limit: 5h·7d 모두 사용량 0%이고 리셋 시각이 없으면 **Line 3 전체 숨김**
-- 🌲 worktree: 링크된 worktree나 `--worktree` 세션이 아니면 숨김
+- 🌲 worktree: 링크된 worktree나 `--worktree` 세션이 아니면 숨김. worktree 이름은 브랜치명과 같으면 생략
 - 📁 저장소: git 저장소가 아니거나 `origin` 리모트가 없으면 숨김
 - ⏳ 경과 시간: 값이 없거나 1초 미만이면 숨김
 - 📥 컨텍스트 세부: 첫 API 응답 전, `/compact` 직후(`current_usage`가 `null`이거나 0)에는 숨김
@@ -117,8 +119,8 @@ Claude Code는 터미널 폭을 `COLUMNS` 환경변수로 넘겨줍니다(v2.1.1
 
 | 줄 | 항상 표시 | 숨기는 순서 (앞쪽부터 먼저) |
 |----|-----------|-----------------------------|
-| Line 1 | 👤 사용자, 🤖 모델, 💰 비용 | 📌 세션명 → ⚡ Effort → 🚀 Fast mode |
-| Line 2 | 🌿 브랜치, 📦 토큰 | 🌲 worktree → 🔀 PR → +/- 변경량 |
+| Line 1 | 👤 사용자, 🤖 모델, 💰 비용 | 🎭 Agent → 📌 세션명 → ⚡ Effort → 🚀 Fast mode |
+| Line 2 | 🌿 브랜치, 📦 토큰 | worktree 이름 → 🌲 worktree → 🔀 PR → +/- 변경량 |
 | Line 3 | 5h 사용률 (5h가 없으면 7d) | 7d 리셋 시각 → 5h 리셋 시각 → 7d 사용률 |
 | Line 4 | 없음 (모두 숨겨지면 줄 숨김) | 💭 thinking → 📁 저장소 → ⏳ 경과 시간 → 📥 컨텍스트 세부 → ♻️ 프롬프트 캐시 |
 

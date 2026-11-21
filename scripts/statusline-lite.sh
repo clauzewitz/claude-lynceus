@@ -2,8 +2,8 @@
 # ══════════════════════════════════════════════════════════════════════
 # claude-lynceus v3.4 LITE — no jq required (uses Python 3), up to 4 lines
 #
-# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 💰 Cost
-# Line 2: 🌿 Branch 🌲 | +added -removed | 🔀 PR | 📦 used / total (%)
+# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🎭 Agent | 💰 Cost
+# Line 2: 🌿 Branch 🌲 worktree | +added -removed | 🔀 PR | 📦 used / total (%)
 # Line 3: ⏱️ 5h bar % reset | 7d bar % reset
 # Line 4: 📁 owner/repo | ⏳ elapsed | 📥 cache · new | ♻️ prompt cache | 💭 thinking
 # With COLUMNS set, lines that are too wide drop optional segments to fit.
@@ -107,13 +107,15 @@ try:
     hr = pc.get('hit_ratio')
     print(f'PC_HIT={int(num(hr) * 100 + 0.5) if num(hr) == hr else -1}')
     print(f'PC_MISSES={int(num(pc.get(\"misses\")))}')
+    agent = obj(d.get('agent')).get('name')
+    print(f'AGENT={q(\"\" if agent is None or agent is False else s(agent))}')
 except Exception:
     print('MODEL=\"—\"; PCT=0; TOTAL=0; USED=0; COST=0; LINES_ADD=0; LINES_DEL=0')
     print('CWD=\"\"; SESSION_ID=\"\"; SESSION_NAME=\"\"; EFFORT=\"\"; FAST_MODE=\"false\"')
     print('RL_5H_PCT=0; RL_5H_RESET_STR=\"\"; RL_7D_PCT=0; RL_7D_RESET_STR=\"\"')
     print('PR_NUM=\"\"; PR_URL=\"\"; PR_STATE=\"\"; PR_KIND=\"\"')
     print('REPO_OWNER=\"\"; REPO_NAME=\"\"; WORKTREE=\"\"; DURATION_S=0; CACHE_READ=0; NEW_INPUT=0; THINKING=\"false\"')
-    print('PC_ON=\"false\"; PC_WARM=\"false\"; PC_EXPIRES=0; PC_HIT=-1; PC_MISSES=0')
+    print('PC_ON=\"false\"; PC_WARM=\"false\"; PC_EXPIRES=0; PC_HIT=-1; PC_MISSES=0; AGENT=\"\"')
 " <<< "$input")"
 
 COST_FMT=$(printf '%.2f' "$COST" 2>/dev/null || echo "0.00")
@@ -429,20 +431,23 @@ fit_line() {
 }
 
 # Drop ranks, per line: settings and identifiers go before live numbers.
-# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 💰 Cost
+# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🎭 Agent | 💰 Cost
 seg_reset
 seg_add 0 "" "${BLD}${CYN}👤 ${USER_NAME}${RST}"
 seg_add 3 " ${DIM}·${RST} " "$SESSION_STR"
 seg_add 0 " ${DIM}|${RST} " "${BLD}🤖${RST} ${MODEL}"
 seg_add 1 " " "$FAST_STR"
 seg_add 2 " ${DIM}|${RST} " "$EFFORT_STR"
+[ -n "$AGENT" ] && seg_add 4 " ${DIM}|${RST} " "${BLD}🎭${RST} ${MAG}${AGENT}${RST}"
 seg_add 0 " ${DIM}|${RST} " "${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}"
 fit_line; LINE1=$LINE
 
-# Line 2: 🌿 Branch 🌲 +added -removed | 🔀 PR | 📦 used / total (%)
+# Line 2: 🌿 Branch 🌲 worktree +added -removed | 🔀 PR | 📦 used / total (%)
 seg_reset
 seg_add 0 "" "${BLD}${GRN}🌿 ${BRANCH}${RST}"
 [ -n "$WORKTREE" ] && seg_add 3 " " "🌲"
+# worktree name, unless it repeats the branch; hidden before the 🌲 marker
+[ -n "$WORKTREE" ] && [ "$WORKTREE" != "$BRANCH" ] && seg_add 4 "" " ${GRY}${WORKTREE}${RST}"
 seg_add 1 " " "$LINES_STR"
 seg_add 2 " ${DIM}|${RST} " "$PR_STR"
 seg_add 0 " ${DIM}|${RST} " "${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"

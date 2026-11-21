@@ -2,8 +2,8 @@
 # ══════════════════════════════════════════════════════════════════════
 # claude-lynceus v3.4 — Dan Does Code style statusline (up to 4 lines)
 #
-# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 💰 Cost
-# Line 2: 🌿 Branch 🌲 | +added -removed | 🔀 PR | 📦 used / total (%)
+# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🎭 Agent | 💰 Cost
+# Line 2: 🌿 Branch 🌲 worktree | +added -removed | 🔀 PR | 📦 used / total (%)
 # Line 3: ⏱️ 5h bar % reset | 7d bar % reset
 # Line 4: 📁 owner/repo | ⏳ elapsed | 📥 cache · new | ♻️ prompt cache | 💭 thinking
 # With COLUMNS set, lines that are too wide drop optional segments to fit.
@@ -34,6 +34,7 @@ GRY=$'\033[90m'
 #   worktree:     workspace.git_worktree (linked git worktree) or worktree.name (--worktree session)
 #   current_usage: null before the first API call and after /compact; cache reads vs new input
 #   prompt_cache: v2.1.251+, absent until the first API response
+#   agent.name:   only with the --agent flag or agent settings
 eval "$(echo "$input" | jq -r '
   def clean: tostring | gsub("[[:cntrl:]]"; "");
   def int: if type == "number" then floor else 0 end;
@@ -69,7 +70,8 @@ eval "$(echo "$input" | jq -r '
   @sh "PC_WARM=\(.prompt_cache | obj | .warm == true)",
   @sh "PC_EXPIRES=\(.prompt_cache | obj | .expires_at | int)",
   @sh "PC_HIT=\(.prompt_cache | obj | .hit_ratio | if type == "number" then . * 100 + 0.5 | floor else -1 end)",
-  @sh "PC_MISSES=\(.prompt_cache | obj | .misses | int)"
+  @sh "PC_MISSES=\(.prompt_cache | obj | .misses | int)",
+  @sh "AGENT=\(.agent | obj | .name // "" | clean)"
 ')"
 
 # used_percentage counts input tokens only (input + cache writes + cache
@@ -438,20 +440,23 @@ fit_line() {
 }
 
 # Drop ranks, per line: settings and identifiers go before live numbers.
-# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 💰 Cost
+# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🎭 Agent | 💰 Cost
 seg_reset
 seg_add 0 "" "${BLD}${CYN}👤 ${USER_NAME}${RST}"
 seg_add 3 " ${DIM}·${RST} " "$SESSION_STR"
 seg_add 0 " ${DIM}|${RST} " "${BLD}🤖${RST} ${MODEL}"
 seg_add 1 " " "$FAST_STR"
 seg_add 2 " ${DIM}|${RST} " "$EFFORT_STR"
+[ -n "$AGENT" ] && seg_add 4 " ${DIM}|${RST} " "${BLD}🎭${RST} ${MAG}${AGENT}${RST}"
 seg_add 0 " ${DIM}|${RST} " "${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}"
 fit_line; LINE1=$LINE
 
-# Line 2: 🌿 Branch 🌲 +added -removed | 🔀 PR | 📦 used / total (%)
+# Line 2: 🌿 Branch 🌲 worktree +added -removed | 🔀 PR | 📦 used / total (%)
 seg_reset
 seg_add 0 "" "${BLD}${GRN}🌿 ${BRANCH}${RST}"
 [ -n "$WORKTREE" ] && seg_add 3 " " "🌲"
+# worktree name, unless it repeats the branch; hidden before the 🌲 marker
+[ -n "$WORKTREE" ] && [ "$WORKTREE" != "$BRANCH" ] && seg_add 4 "" " ${GRY}${WORKTREE}${RST}"
 seg_add 1 " " "$LINES_STR"
 seg_add 2 " ${DIM}|${RST} " "$PR_STR"
 seg_add 0 " ${DIM}|${RST} " "${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
