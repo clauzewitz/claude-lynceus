@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-11-21
+
+### Added
+- 🎭 Agent 이름 (Line 1, ⚡ Effort 뒤, `agent.name`) — `--agent` 플래그나 agent 설정으로 실행했을 때만
+  표시. 터미널이 좁으면 Line 1에서 가장 먼저 숨김
+- worktree 이름 (Line 2, 🌲 뒤, 회색, `workspace.git_worktree` → `worktree.name`) — 브랜치명과 같으면
+  생략. 터미널이 좁으면 🌲보다 먼저 숨김
+
 ## [3.5.0] - 2026-11-21
 
 ### Added
@@ -156,7 +164,8 @@
 - `/session-status:status` 슬래시 명령어
 - `skills/session-status/SKILL.md` 스킬 정의
 
-[Unreleased]: https://github.com/clauzewitz/claude-lynceus/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/clauzewitz/claude-lynceus/compare/v3.5.1...HEAD
+[3.5.1]: https://github.com/clauzewitz/claude-lynceus/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.2...v3.5.0
 [3.4.2]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.1...v3.4.2
 [3.4.1]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.0...v3.4.1
