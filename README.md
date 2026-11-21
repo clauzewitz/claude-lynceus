@@ -1,13 +1,14 @@
 # 📊 Claude Lynceus v3.4
 
-Claude Code 터미널 하단에 **항상 표시되는 3줄 상태 바**를 추가하는 플러그인입니다.
+Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**를 추가하는 플러그인입니다.
 
 ## 미리보기
 
 ```
 👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 🧠 64% | 💰 $13.86
-🌿 feature/DPDD-2206 +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
+🌿 feature/DPDD-2206 🌲 +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
 ⏱️ 5h ████░░░░░░ 45% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00
+📁 clauzewitz/claude-lynceus | ⏳ 1h23m | 📥 cache 112k · new 16k | 💭 thinking
 ```
 
 ---
@@ -31,6 +32,7 @@ Claude Code 터미널 하단에 **항상 표시되는 3줄 상태 바**를 추�
 | 아이콘 | 속성 | 데이터 소스 | 비고 |
 |--------|------|-------------|------|
 | 🌿 | git 브랜치 | `git branch --show-current` | 미연결 시 — 표시 |
+| 🌲 | worktree | `workspace.git_worktree` → `worktree.name` | 링크된 git worktree(v2.1.97+) 또는 `--worktree` 세션(v2.1.69+)일 때만 표시 |
 | +/- | 코드 변경량 | `cost.total_lines_added/removed` | 0이면 자동 숨김 |
 | 🔀 | 열린 PR | `pr.number`, `pr.url`, `pr.review_state`, `pr.kind` | OSC 8 클릭 링크, GitLab MR은 `!번호`, 없으면 숨김 |
 | 📦 | 토큰 사용량 | `total_input_tokens` | 쉼표 포맷. `used_percentage`와 같은 입력 토큰 기준 (출력 토큰 제외) |
@@ -43,7 +45,18 @@ Claude Code 터미널 하단에 **항상 표시되는 3줄 상태 바**를 추�
 | 5h | `rate_limits.five_hour.used_percentage`, `resets_at` | 프로그레스 바 + 리셋 시각 |
 | 7d | `rate_limits.seven_day.used_percentage`, `resets_at` | 프로그레스 바 + 리셋 날짜·시각 |
 
-두 값 모두 없으면 **줄 전체가 숨겨져** 기존 2줄로 표시됩니다.
+두 값 모두 없으면 **줄 전체가 숨겨집니다**.
+
+### Line 4 — 세션 세부
+
+| 아이콘 | 속성 | 데이터 소스 | 비고 |
+|--------|------|-------------|------|
+| 📁 | 저장소 | `workspace.repo.owner`, `workspace.repo.name` | `origin` 리모트 기준 `owner/repo`, 없으면 숨김 |
+| ⏳ | 세션 경과 시간 | `cost.total_duration_ms` | `45s` / `12m` / `1h23m`. resume을 넘어 누적되며 세션이 실행 중이지 않은 시간은 제외 |
+| 📥 | 컨텍스트 세부 | `context_window.current_usage` | `cache` = 캐시 읽기(`cache_read_input_tokens`), `new` = 새 입력(`input_tokens` + `cache_creation_input_tokens`). `8.5k` / `82k` / `1.2M` 형식(버림). v2.0.70+ |
+| 💭 | Extended thinking | `thinking.enabled` | 켜져 있을 때만 표시. v2.1.119+ |
+
+표시할 값이 하나도 없으면 **줄 전체가 숨겨집니다**. Line 3(Rate Limit)이 없으면 이 줄이 3번째 줄에 표시됩니다.
 
 ### 🔀 PR 리뷰 상태 아이콘
 
@@ -86,6 +99,12 @@ effort를 지원하지 않는 모델에서는 필드 자체가 오지 않아 세
 - 🔀 PR: 현재 브랜치에 열린 PR이 없으면 숨김
 - +/- 코드 변경량: 추가/삭제 모두 0이면 숨김
 - ⏱️ Rate Limit: 5h·7d 모두 사용량 0%이고 리셋 시각이 없으면 **Line 3 전체 숨김**
+- 🌲 worktree: 링크된 worktree나 `--worktree` 세션이 아니면 숨김
+- 📁 저장소: git 저장소가 아니거나 `origin` 리모트가 없으면 숨김
+- ⏳ 경과 시간: 값이 없거나 1초 미만이면 숨김
+- 📥 컨텍스트 세부: 첫 API 응답 전, `/compact` 직후(`current_usage`가 `null`이거나 0)에는 숨김
+- 💭 thinking: 꺼져 있거나 필드가 없으면 숨김
+- Line 4: 위 네 항목이 모두 숨겨지면 **줄 전체 숨김**
 
 ---
 

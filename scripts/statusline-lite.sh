@@ -1,10 +1,11 @@
 #!/bin/bash
 # ══════════════════════════════════════════════════════════════════════
-# claude-lynceus v3.4 LITE — no jq required (uses Python 3)
+# claude-lynceus v3.4 LITE — no jq required (uses Python 3), up to 4 lines
 #
 # Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🧠 Context | 💰 Cost
-# Line 2: 🌿 Branch | +added -removed | 🔀 PR | 📦 used / total (%)
+# Line 2: 🌿 Branch 🌲 | +added -removed | 🔀 PR | 📦 used / total (%)
 # Line 3: ⏱️ 5h bar % reset | 7d bar % reset
+# Line 4: 📁 owner/repo | ⏳ elapsed | 📥 cache · new | 💭 thinking
 # ══════════════════════════════════════════════════════════════════════
 
 input=$(cat)
@@ -84,11 +85,26 @@ try:
     print(f'PR_URL={q(s(pr.get(\"url\")))}')
     print(f'PR_STATE={q(s(pr.get(\"review_state\")))}')
     print(f'PR_KIND={q(s(pr.get(\"kind\")))}')
+    ws = obj(d.get('workspace'))
+    repo = obj(ws.get('repo'))
+    print(f'REPO_OWNER={q(s(repo.get(\"owner\")))}')
+    print(f'REPO_NAME={q(s(repo.get(\"name\")))}')
+    # linked git worktree, else the name of the --worktree session
+    wt = ws.get('git_worktree')
+    if wt in (None, False):
+        wt = obj(d.get('worktree')).get('name')
+    print(f'WORKTREE={q(\"\" if wt in (None, False) else s(wt))}')
+    print(f'DURATION_S={int(num(c.get(\"total_duration_ms\")) // 1000)}')
+    cu = obj(cw.get('current_usage'))
+    print(f'CACHE_READ={int(num(cu.get(\"cache_read_input_tokens\")))}')
+    print(f'NEW_INPUT={int(num(cu.get(\"input_tokens\"))) + int(num(cu.get(\"cache_creation_input_tokens\")))}')
+    print(f'THINKING={\"true\" if obj(d.get(\"thinking\")).get(\"enabled\") is True else \"false\"}')
 except Exception:
     print('MODEL=\"—\"; PCT=0; TOTAL=0; USED=0; COST=0; LINES_ADD=0; LINES_DEL=0')
     print('CWD=\"\"; SESSION_ID=\"\"; SESSION_NAME=\"\"; EFFORT=\"\"; FAST_MODE=\"false\"')
     print('RL_5H_PCT=0; RL_5H_RESET_STR=\"\"; RL_7D_PCT=0; RL_7D_RESET_STR=\"\"')
     print('PR_NUM=\"\"; PR_URL=\"\"; PR_STATE=\"\"; PR_KIND=\"\"')
+    print('REPO_OWNER=\"\"; REPO_NAME=\"\"; WORKTREE=\"\"; DURATION_S=0; CACHE_READ=0; NEW_INPUT=0; THINKING=\"false\"')
 " <<< "$input")"
 
 COST_FMT=$(printf '%.2f' "$COST" 2>/dev/null || echo "0.00")
@@ -196,6 +212,49 @@ if [ -n "$EFFORT" ]; then
   EFFORT_STR=" ${DIM}|${RST} ${BLD}⚡${RST} ${EFF_CLR}${EFFORT}${RST}"
 fi
 
+# ── Session detail segments (Line 4) ─────────────────────────────────
+# 1234 → 1234, 8512 → 8.5k, 82000 → 82k, 1234567 → 1.2M (truncated, not rounded)
+fmt_k() {
+  local n=$1
+  if (( n < 1000 )); then echo "$n"
+  elif (( n < 10000 )); then echo "$((n / 1000)).$(((n % 1000) / 100))k"
+  elif (( n < 1000000 )); then echo "$((n / 1000))k"
+  else echo "$((n / 1000000)).$(((n % 1000000) / 100000))M"
+  fi
+}
+
+# 45 → 45s, 754 → 12m, 4980 → 1h23m
+fmt_dur() {
+  local s=$1
+  if (( s < 60 )); then echo "${s}s"
+  elif (( s < 3600 )); then echo "$((s / 60))m"
+  else printf '%dh%02dm' $((s / 3600)) $(((s % 3600) / 60))
+  fi
+}
+
+WT_STR=""
+[ -n "$WORKTREE" ] && WT_STR=" 🌲"
+
+DETAIL_SEGS=()
+if [ -n "$REPO_NAME" ]; then
+  REPO_STR="$REPO_NAME"
+  [ -n "$REPO_OWNER" ] && REPO_STR="${REPO_OWNER}/${REPO_NAME}"
+  DETAIL_SEGS+=("${BLD}📁${RST} ${CYN}${REPO_STR}${RST}")
+fi
+if [ "$DURATION_S" -gt 0 ] 2>/dev/null; then
+  DETAIL_SEGS+=("${BLD}⏳${RST} $(fmt_dur "$DURATION_S")")
+fi
+if [ "$CACHE_READ" -gt 0 ] 2>/dev/null || [ "$NEW_INPUT" -gt 0 ] 2>/dev/null; then
+  DETAIL_SEGS+=("${BLD}📥${RST} ${GRY}cache${RST} $(fmt_k "$CACHE_READ") ${DIM}·${RST} ${GRY}new${RST} $(fmt_k "$NEW_INPUT")")
+fi
+[ "$THINKING" = "true" ] && DETAIL_SEGS+=("${BLD}💭${RST} ${GRY}thinking${RST}")
+
+LINE4=""
+for seg in "${DETAIL_SEGS[@]}"; do
+  [ -n "$LINE4" ] && LINE4+=" ${DIM}|${RST} "
+  LINE4+="$seg"
+done
+
 # ── PR segment (OSC 8 hyperlink when a URL is available) ─────────────
 PR_STR=""
 if [ -n "$PR_NUM" ]; then
@@ -216,12 +275,13 @@ fi
 
 # ── Output ────────────────────────────────────────────────────────────
 LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST}${SESSION_STR} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${FAST_STR}${EFFORT_STR} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}"
-LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${LINES_STR}${PR_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
+LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${WT_STR}${LINES_STR}${PR_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
 
 echo "${LINE1}"
 
+OUT="${LINE2}"
+
 if [ -n "$RL_5H_SEG" ] || [ -n "$RL_7D_SEG" ]; then
-  echo "${LINE2}"
   LINE3="${BLD}⏱️${RST} "
   if [ -n "$RL_5H_SEG" ]; then
     LINE3+="$RL_5H_SEG"
@@ -229,7 +289,9 @@ if [ -n "$RL_5H_SEG" ] || [ -n "$RL_7D_SEG" ]; then
   else
     LINE3+="$RL_7D_SEG"
   fi
-  echo -n "${LINE3}"
-else
-  echo -n "${LINE2}"
+  OUT+=$'\n'"${LINE3}"
 fi
+
+[ -n "$LINE4" ] && OUT+=$'\n'"${LINE4}"
+
+echo -n "${OUT}"

@@ -13,9 +13,17 @@ bottom of the Claude Code terminal.
 
 ## What it displays
 
-- 👤 **User**: The git username or system username
-- 🌿 **Branch**: Current git branch (or "git 미연결" if not in a repo)
-- 📦 **Context**: Token usage / total with percentage and progress bar
+Up to four lines. Segments without data are hidden, and a line with nothing
+to show is hidden entirely.
+
+- **Line 1**: 👤 user (`CLAUDE_USER_NICK` → git user.name → whoami),
+  📌 session name, 🤖 model with 🚀 fast mode, ⚡ effort level,
+  🧠 context usage %, 💰 session cost
+- **Line 2**: 🌿 git branch with 🌲 worktree marker, +/- lines changed,
+  🔀 open PR / GitLab MR with review state, 📦 context tokens used / window (%)
+- **Line 3**: ⏱️ 5-hour and 7-day rate limits with reset times
+- **Line 4**: 📁 owner/repo, ⏳ session elapsed time,
+  📥 context breakdown (cache reads · new input), 💭 extended thinking
 
 ## Installation Steps
 

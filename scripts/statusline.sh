@@ -1,10 +1,11 @@
 #!/bin/bash
 # ══════════════════════════════════════════════════════════════════════
-# claude-lynceus v3.4 — Dan Does Code style 3-line statusline
+# claude-lynceus v3.4 — Dan Does Code style statusline (up to 4 lines)
 #
 # Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🧠 Context | 💰 Cost
-# Line 2: 🌿 Branch | +added -removed | 🔀 PR | 📦 used / total (%)
+# Line 2: 🌿 Branch 🌲 | +added -removed | 🔀 PR | 📦 used / total (%)
 # Line 3: ⏱️ 5h bar % reset | 7d bar % reset
+# Line 4: 📁 owner/repo | ⏳ elapsed | 📥 cache · new | 💭 thinking
 # ══════════════════════════════════════════════════════════════════════
 
 input=$(cat)
@@ -29,9 +30,12 @@ GRY=$'\033[90m'
 #   rate_limits:  Claude Code v2.1.80+
 #   effort.level: Claude Code v2.1.119+, absent when the model has no effort parameter
 #   pr:           open PR for the current branch; pr.kind is "mr" for GitLab (v2.1.234+)
+#   worktree:     workspace.git_worktree (linked git worktree) or worktree.name (--worktree session)
+#   current_usage: null before the first API call and after /compact; cache reads vs new input
 eval "$(echo "$input" | jq -r '
   def clean: tostring | gsub("[[:cntrl:]]"; "");
   def int: if type == "number" then floor else 0 end;
+  def obj: if type == "object" then . else {} end;
   @sh "MODEL=\(.model.display_name // "—" | clean)",
   @sh "PCT=\(.context_window.used_percentage | int)",
   @sh "TOTAL=\(.context_window.context_window_size | int)",
@@ -51,7 +55,14 @@ eval "$(echo "$input" | jq -r '
   @sh "PR_NUM=\(.pr.number // "" | clean)",
   @sh "PR_URL=\(.pr.url // "" | clean)",
   @sh "PR_STATE=\(.pr.review_state // "" | clean)",
-  @sh "PR_KIND=\(.pr.kind // "" | clean)"
+  @sh "PR_KIND=\(.pr.kind // "" | clean)",
+  @sh "REPO_OWNER=\(.workspace.repo | obj | .owner // "" | clean)",
+  @sh "REPO_NAME=\(.workspace.repo | obj | .name // "" | clean)",
+  @sh "WORKTREE=\(.workspace.git_worktree // (.worktree | obj | .name) // "" | clean)",
+  @sh "DURATION_S=\(.cost.total_duration_ms | if type == "number" then . / 1000 | floor else 0 end)",
+  @sh "CACHE_READ=\(.context_window.current_usage | obj | .cache_read_input_tokens | int)",
+  @sh "NEW_INPUT=\(.context_window.current_usage | obj | (.input_tokens | int) + (.cache_creation_input_tokens | int))",
+  @sh "THINKING=\(.thinking | obj | .enabled == true)"
 ')"
 
 # used_percentage counts input tokens only (input + cache writes + cache
@@ -212,6 +223,49 @@ if [ -n "$EFFORT" ]; then
   EFFORT_STR=" ${DIM}|${RST} ${BLD}⚡${RST} ${EFF_CLR}${EFFORT}${RST}"
 fi
 
+# ── Session detail segments (Line 4) ─────────────────────────────────
+# 1234 → 1234, 8512 → 8.5k, 82000 → 82k, 1234567 → 1.2M (truncated, not rounded)
+fmt_k() {
+  local n=$1
+  if (( n < 1000 )); then echo "$n"
+  elif (( n < 10000 )); then echo "$((n / 1000)).$(((n % 1000) / 100))k"
+  elif (( n < 1000000 )); then echo "$((n / 1000))k"
+  else echo "$((n / 1000000)).$(((n % 1000000) / 100000))M"
+  fi
+}
+
+# 45 → 45s, 754 → 12m, 4980 → 1h23m
+fmt_dur() {
+  local s=$1
+  if (( s < 60 )); then echo "${s}s"
+  elif (( s < 3600 )); then echo "$((s / 60))m"
+  else printf '%dh%02dm' $((s / 3600)) $(((s % 3600) / 60))
+  fi
+}
+
+WT_STR=""
+[ -n "$WORKTREE" ] && WT_STR=" 🌲"
+
+DETAIL_SEGS=()
+if [ -n "$REPO_NAME" ]; then
+  REPO_STR="$REPO_NAME"
+  [ -n "$REPO_OWNER" ] && REPO_STR="${REPO_OWNER}/${REPO_NAME}"
+  DETAIL_SEGS+=("${BLD}📁${RST} ${CYN}${REPO_STR}${RST}")
+fi
+if [ "$DURATION_S" -gt 0 ] 2>/dev/null; then
+  DETAIL_SEGS+=("${BLD}⏳${RST} $(fmt_dur "$DURATION_S")")
+fi
+if [ "$CACHE_READ" -gt 0 ] 2>/dev/null || [ "$NEW_INPUT" -gt 0 ] 2>/dev/null; then
+  DETAIL_SEGS+=("${BLD}📥${RST} ${GRY}cache${RST} $(fmt_k "$CACHE_READ") ${DIM}·${RST} ${GRY}new${RST} $(fmt_k "$NEW_INPUT")")
+fi
+[ "$THINKING" = "true" ] && DETAIL_SEGS+=("${BLD}💭${RST} ${GRY}thinking${RST}")
+
+LINE4=""
+for seg in "${DETAIL_SEGS[@]}"; do
+  [ -n "$LINE4" ] && LINE4+=" ${DIM}|${RST} "
+  LINE4+="$seg"
+done
+
 # ── Build PR segment (OSC 8 hyperlink when a URL is available) ───────
 PR_STR=""
 if [ -n "$PR_NUM" ]; then
@@ -231,20 +285,21 @@ if [ -n "$PR_NUM" ]; then
 fi
 
 # ══════════════════════════════════════════════════════════════════════
-# OUTPUT: 3-line statusline
+# OUTPUT: up to 4 lines
 # ══════════════════════════════════════════════════════════════════════
 
 # Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🧠 Context% | 💰 Cost
 LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST}${SESSION_STR} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${FAST_STR}${EFFORT_STR} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}"
 
-# Line 2: 🌿 Branch +added -removed | 🔀 PR | 📦 used / total (%)
-LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${LINES_STR}${PR_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
+# Line 2: 🌿 Branch 🌲 +added -removed | 🔀 PR | 📦 used / total (%)
+LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${WT_STR}${LINES_STR}${PR_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
 
 echo "${LINE1}"
 
+OUT="${LINE2}"
+
 # Line 3: ⏱️ 5h bar % reset | 7d bar % reset — hidden when no rate limit data
 if [ -n "$RL_5H_SEG" ] || [ -n "$RL_7D_SEG" ]; then
-  echo "${LINE2}"
   LINE3="${BLD}⏱️${RST} "
   if [ -n "$RL_5H_SEG" ]; then
     LINE3+="$RL_5H_SEG"
@@ -252,7 +307,10 @@ if [ -n "$RL_5H_SEG" ] || [ -n "$RL_7D_SEG" ]; then
   else
     LINE3+="$RL_7D_SEG"
   fi
-  echo -n "${LINE3}"
-else
-  echo -n "${LINE2}"
+  OUT+=$'\n'"${LINE3}"
 fi
+
+# Line 4: 📁 repo | ⏳ elapsed | 📥 cache · new | 💭 thinking — hidden when empty
+[ -n "$LINE4" ] && OUT+=$'\n'"${LINE4}"
+
+echo -n "${OUT}"
