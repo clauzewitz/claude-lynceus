@@ -1,7 +1,7 @@
 {
   "name": "claude-lynceus",
   "description": "Lynceus — the sharpest eye on your Claude Code session. 3-line statusline showing user, session, model, effort, context, cost, git branch, PR, and 5h/7d rate limits.",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "author": {
     "name": "claude-plugin-author"
   },

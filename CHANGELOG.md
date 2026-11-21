@@ -5,7 +5,37 @@
 
 ## [Unreleased]
 
-## [3.4.0] - 2026-08-12
+## [3.4.1] - 2026-11-21
+
+### Fixed
+- **v3.4.0 구현이 릴리스에서 빠져 있던 문제** — v3.4.0 태그 커밋에는 `CHANGELOG.md`와
+  `plugin.json`만 들어 있었고, 3줄 레이아웃·세션명·PR·7d·Fast mode·세션별 캐시 등 실제 구현은
+  그 뒤 커밋(74e4746)에 들어갔음. 3.4.1이 이 구현을 포함하는 첫 릴리스
+- lite 버전이 세션 초반(`context_window.used_percentage`가 `null`)에 모델명·브랜치·세션 ID까지
+  대체값으로 표시하던 문제 — 필드마다 null을 따로 처리
+- 📦 토큰 수와 백분율의 기준이 달랐던 문제 — 이제 `used_percentage`와 같은 입력 토큰 기준
+  (`total_input_tokens` = 입력 + 캐시 쓰기 + 캐시 읽기)으로 표시. **출력 토큰이 빠지므로 수치가
+  이전보다 작게 보일 수 있음**
+- 세션명·PR URL 등 외부 문자열에 든 터미널 제어문자(ESC, BEL 등)를 제거 — 터미널 제목 변경이나
+  링크 변조 방지
+- `/claude-lynceus:install`과 `setup-statusline` 스킬이 `~/.claude/claude-lynceusline.sh`에
+  설치해 `uninstall.sh`로 지워지지 않던 문제 — 경로를 `lynceus-statusline.sh`로 통일하고,
+  설치·제거 스크립트의 옛 파일 정리 대상에 `claude-lynceusline.sh` 추가
+- README의 최소 버전 표기(Rate Limit v2.1.80+, Effort v2.1.119+), ultracode 설명, 미리보기 모델명
+
+### Added
+- GitLab merge request는 `!번호`로 표시 (`pr.kind: "mr"`, Claude Code v2.1.234+)
+- 24시간 동안 갱신되지 않은 세션별 캐시 파일(`/tmp/lynceus-cache-*`) 자동 정리
+
+### Changed
+- jq 버전이 stdin JSON을 jq 한 번으로 파싱 (기존 20회 호출)
+- `/claude-lynceus:install`, `/claude-lynceus:uninstall`을 `commands/`에서 `skills/`로 이관
+  (호출 이름은 그대로)
+- 스킬 설치 안내의 statusLine 설정에 `refreshInterval: 10` 추가 (`install.sh`와 동일)
+
+### Removed
+- ⚡ Effort의 `$CLAUDE_EFFORT` 환경변수 대체값 — statusline 입력 JSON의 `effort.level`만 사용.
+  effort를 지원하지 않는 모델에서는 세그먼트가 숨겨짐 (README 설명과 일치)
 
 ## [3.4.0] - 2026-08-12
 
@@ -93,13 +123,13 @@
 - `/session-status:status` 슬래시 명령어
 - `skills/session-status/SKILL.md` 스킬 정의
 
-[Unreleased]: git@github-personal.com:clauzewitz/claude-lynceus/compare/v3.4.0...HEAD
-[3.4.0]: git@github-personal.com:clauzewitz/claude-lynceus/compare/v3.4.0...v3.4.0
-[3.4.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.3.0...v3.4.0
-[3.3.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.2.1...v3.3.0
-[3.2.1]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.2.0...v3.2.1
-[3.2.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.1.0...v3.2.0
-[3.1.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v3.0.0...v3.1.0
-[3.0.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v2.0.0...v3.0.0
-[2.0.0]: https://github.com/YOUR_USERNAME/claude-lynceus/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/YOUR_USERNAME/claude-lynceus/releases/tag/v1.0.0
+[Unreleased]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.1...HEAD
+[3.4.1]: https://github.com/clauzewitz/claude-lynceus/compare/v3.4.0...v3.4.1
+[3.4.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.3.0...v3.4.0
+[3.3.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.2.1...v3.3.0
+[3.2.1]: https://github.com/clauzewitz/claude-lynceus/compare/v3.2.0...v3.2.1
+[3.2.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.1.0...v3.2.0
+[3.1.0]: https://github.com/clauzewitz/claude-lynceus/compare/v3.0.0...v3.1.0
+[3.0.0]: https://github.com/clauzewitz/claude-lynceus/compare/v2.0.0...v3.0.0
+[2.0.0]: https://github.com/clauzewitz/claude-lynceus/compare/v1.0.0...v2.0.0
+[1.0.0]: https://github.com/clauzewitz/claude-lynceus/releases/tag/v1.0.0
