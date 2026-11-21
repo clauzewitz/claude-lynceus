@@ -5,7 +5,7 @@ Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**�
 ## 미리보기
 
 ```
-👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 🧠 64% | 💰 $13.86
+👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 💰 $13.86
 🌿 feature/DPDD-2206 🌲 +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
 ⏱️ 5h ████░░░░░░ 45% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00
 📁 clauzewitz/claude-lynceus | ⏳ 1h23m | 📥 cache 112k · new 16k | 💭 thinking
@@ -24,7 +24,6 @@ Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**�
 | 🤖 | 모델명 | `model.display_name` | |
 | 🚀 | Fast mode | `fast_mode` | 켜져 있을 때만 표시 |
 | ⚡ | Effort 레벨 | `effort.level` | v2.1.119+, 색상 변동, 없으면 숨김 |
-| 🧠 | 컨텍스트 사용률 | `context_window.used_percentage` | 색상 변동 |
 | 💰 | 세션 비용 | `cost.total_cost_usd` | USD 표시 |
 
 ### Line 2 — git 컨텍스트
@@ -69,7 +68,7 @@ Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**�
 
 ### 색상 변동 기준
 
-🧠 컨텍스트, ⏱️ Rate Limit, 📦 토큰 사용량에 공통 적용됩니다.
+⏱️ Rate Limit, 📦 토큰 사용량에 공통 적용됩니다.
 
 | 구간 | 색상 | ANSI 코드 |
 |------|------|-----------|

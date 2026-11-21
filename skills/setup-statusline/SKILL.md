@@ -18,7 +18,7 @@ to show is hidden entirely.
 
 - **Line 1**: 👤 user (`CLAUDE_USER_NICK` → git user.name → whoami),
   📌 session name, 🤖 model with 🚀 fast mode, ⚡ effort level,
-  🧠 context usage %, 💰 session cost
+  💰 session cost
 - **Line 2**: 🌿 git branch with 🌲 worktree marker, +/- lines changed,
   🔀 open PR / GitLab MR with review state, 📦 context tokens used / window (%)
 - **Line 3**: ⏱️ 5-hour and 7-day rate limits with reset times

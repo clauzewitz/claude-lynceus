@@ -2,7 +2,7 @@
 # ══════════════════════════════════════════════════════════════════════
 # claude-lynceus v3.4 LITE — no jq required (uses Python 3), up to 4 lines
 #
-# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 🧠 Context | 💰 Cost
+# Line 1: 👤 User · 📌 Session | 🤖 Model 🚀 | ⚡ Effort | 💰 Cost
 # Line 2: 🌿 Branch 🌲 | +added -removed | 🔀 PR | 📦 used / total (%)
 # Line 3: ⏱️ 5h bar % reset | 7d bar % reset
 # Line 4: 📁 owner/repo | ⏳ elapsed | 📥 cache · new | 💭 thinking
@@ -274,7 +274,7 @@ if [ -n "$PR_NUM" ]; then
 fi
 
 # ── Output ────────────────────────────────────────────────────────────
-LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST}${SESSION_STR} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${FAST_STR}${EFFORT_STR} ${DIM}|${RST} ${BLD}🧠${RST} ${CTX_CLR}${PCT}%${RST} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}"
+LINE1="${BLD}${CYN}👤 ${USER_NAME}${RST}${SESSION_STR} ${DIM}|${RST} ${BLD}🤖${RST} ${MODEL}${FAST_STR}${EFFORT_STR} ${DIM}|${RST} ${BLD}💰${RST} ${MAG}\$${COST_FMT}${RST}"
 LINE2="${BLD}${GRN}🌿 ${BRANCH}${RST}${WT_STR}${LINES_STR}${PR_STR} ${DIM}|${RST} ${CTX_CLR}📦 ${USED_FMT} / ${TOTAL_FMT} (${PCT}%)${RST}"
 
 echo "${LINE1}"
