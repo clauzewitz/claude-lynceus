@@ -23,7 +23,11 @@ to show is hidden entirely.
   🔀 open PR / GitLab MR with review state, 📦 context tokens used / window (%)
 - **Line 3**: ⏱️ 5-hour and 7-day rate limits with reset times
 - **Line 4**: 📁 owner/repo, ⏳ session elapsed time,
-  📥 context breakdown (cache reads · new input), 💭 extended thinking
+  📥 context breakdown (cache reads · new input),
+  ♻️ prompt cache (warm time left or cold, hit ratio, misses), 💭 extended thinking
+
+On narrow terminals (Claude Code passes the width in `COLUMNS`), each line
+hides its optional segments, settings and identifiers first, so it fits.
 
 ## Installation Steps
 

@@ -1,14 +1,16 @@
-# 📊 Claude Lynceus v3.4
+# 📊 Claude Lynceus v3.5
 
 Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**를 추가하는 플러그인입니다.
 
 ## 미리보기
 
+넓은 터미널(`COLUMNS` 120)에서의 출력입니다. 좁은 터미널에서는 [터미널 폭 맞춤](#터미널-폭-맞춤)을 참고하세요.
+
 ```
 👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 💰 $13.86
 🌿 feature/DPDD-2206 🌲 +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
 ⏱️ 5h ████░░░░░░ 45% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00
-📁 clauzewitz/claude-lynceus | ⏳ 1h23m | 📥 cache 112k · new 16k | 💭 thinking
+📁 clauzewitz/claude-lynceus | ⏳ 1h23m | 📥 cache 112k · new 16k | ♻️ warm 42m · hit 91% | 💭 thinking
 ```
 
 ---
@@ -53,6 +55,7 @@ Claude Code 터미널 하단에 **항상 표시되는 상태 바(최대 4줄)**�
 | 📁 | 저장소 | `workspace.repo.owner`, `workspace.repo.name` | `origin` 리모트 기준 `owner/repo`, 없으면 숨김 |
 | ⏳ | 세션 경과 시간 | `cost.total_duration_ms` | `45s` / `12m` / `1h23m`. resume을 넘어 누적되며 세션이 실행 중이지 않은 시간은 제외 |
 | 📥 | 컨텍스트 세부 | `context_window.current_usage` | `cache` = 캐시 읽기(`cache_read_input_tokens`), `new` = 새 입력(`input_tokens` + `cache_creation_input_tokens`). `8.5k` / `82k` / `1.2M` 형식(버림). v2.0.70+ |
+| ♻️ | 프롬프트 캐시 | `prompt_cache.warm`, `expires_at`, `hit_ratio`, `misses`, `caching_observed` | `warm 42m`(만료까지 남은 시간) 또는 `cold`, `hit` = 캐시 적중률(반올림), `miss` = 캐시 미스 횟수(0이면 숨김). v2.1.251+ |
 | 💭 | Extended thinking | `thinking.enabled` | 켜져 있을 때만 표시. v2.1.119+ |
 
 표시할 값이 하나도 없으면 **줄 전체가 숨겨집니다**. Line 3(Rate Limit)이 없으면 이 줄이 3번째 줄에 표시됩니다.
@@ -103,7 +106,42 @@ effort를 지원하지 않는 모델에서는 필드 자체가 오지 않아 세
 - ⏳ 경과 시간: 값이 없거나 1초 미만이면 숨김
 - 📥 컨텍스트 세부: 첫 API 응답 전, `/compact` 직후(`current_usage`가 `null`이거나 0)에는 숨김
 - 💭 thinking: 꺼져 있거나 필드가 없으면 숨김
-- Line 4: 위 네 항목이 모두 숨겨지면 **줄 전체 숨김**
+- ♻️ 프롬프트 캐시: 첫 API 응답 전(`prompt_cache` 없음), `null`, 또는 이번 세션에 캐시 토큰이 한 번도 보고되지 않았으면(`caching_observed: false`) 숨김
+- Line 4: 위 다섯 항목이 모두 숨겨지면 **줄 전체 숨김**
+
+### 터미널 폭 맞춤
+
+Claude Code는 터미널 폭을 `COLUMNS` 환경변수로 넘겨줍니다(v2.1.153+). 줄이 `COLUMNS - 2`열보다 넓으면
+(2열은 `padding` 여유) 아래 순서대로 세그먼트를 숨기고, 그래도 넘치면 줄 끝을 잘라 `…`를 붙입니다.
+규칙은 "설정·식별 정보를 먼저, 계속 바뀌는 수치는 나중에" 숨기는 것입니다. `COLUMNS`가 없으면 모든 세그먼트를 그대로 표시합니다.
+
+| 줄 | 항상 표시 | 숨기는 순서 (앞쪽부터 먼저) |
+|----|-----------|-----------------------------|
+| Line 1 | 👤 사용자, 🤖 모델, 💰 비용 | 📌 세션명 → ⚡ Effort → 🚀 Fast mode |
+| Line 2 | 🌿 브랜치, 📦 토큰 | 🌲 worktree → 🔀 PR → +/- 변경량 |
+| Line 3 | 5h 사용률 (5h가 없으면 7d) | 7d 리셋 시각 → 5h 리셋 시각 → 7d 사용률 |
+| Line 4 | 없음 (모두 숨겨지면 줄 숨김) | 💭 thinking → 📁 저장소 → ⏳ 경과 시간 → 📥 컨텍스트 세부 → ♻️ 프롬프트 캐시 |
+
+`COLUMNS` 80:
+
+```
+👤 주인 · 📌 statusline-v34 | 🤖 Opus 5.5 🚀 | ⚡ high | 💰 $13.86
+🌿 feature/DPDD-2206 🌲 +1932 -73 | 🔀 #1234 ✓ | 📦 128,000 / 200,000 (64%)
+⏱️ 5h ████░░░░░░ 45% reset 16:06 | 7d ████░░░░░░ 41% reset 8/14 09:00
+⏳ 1h23m | 📥 cache 112k · new 16k | ♻️ warm 42m · hit 91%
+```
+
+`COLUMNS` 60:
+
+```
+👤 주인 | 🤖 Opus 5.5 🚀 | ⚡ high | 💰 $13.86
+🌿 feature/DPDD-2206 | 📦 128,000 / 200,000 (64%)
+⏱️ 5h ████░░░░░░ 45% reset 16:06 | 7d ████░░░░░░ 41%
+⏳ 1h23m | 📥 cache 112k · new 16k | ♻️ warm 42m · hit 91%
+```
+
+표시 폭은 이모지와 한글 등 동아시아 전각 문자를 2열, 나머지를 1열로 계산합니다. 터미널이 모호한 폭의
+문자(`█`, `░`, `·` 등)를 2열로 그리도록 설정되어 있으면 실제 폭이 더 넓을 수 있습니다.
 
 ---
 
@@ -135,6 +173,8 @@ Claude 닉네임을 사용하려면 `~/.claude/settings.json`에 추가하세요
   - v2.1.80+ : Rate Limit 데이터 (claude.ai Pro / Max / Ultra 구독)
   - v2.1.119+ : ⚡ Effort 레벨
   - v2.1.145+ : 🔀 PR 정보 (GitLab MR은 v2.1.234+)
+  - v2.1.153+ : 터미널 폭 맞춤 (`COLUMNS`)
+  - v2.1.251+ : ♻️ 프롬프트 캐시
   - 그 이하 버전에서도 동작하며, 지원하지 않는 세그먼트만 자동으로 숨겨집니다
 - **jq** (권장) 또는 **Python 3** (jq 없으면 자동 경량 모드)
 
@@ -189,6 +229,8 @@ chmod +x ~/.claude/lynceus-statusline.sh
 `refreshInterval`은 이벤트 갱신에 더해 N초마다 스크립트를 다시 실행합니다.
 Rate Limit과 PR 상태는 어시스턴트 메시지 없이도 변하므로, 세션이 유휴 상태일 때
 값이 멈추지 않게 하려면 설정하는 편이 좋습니다. 생략하면 이벤트 발생 시에만 갱신됩니다.
+♻️ 프롬프트 캐시의 남은 시간도 이 주기로 줄어듭니다. 만료 시각(`expires_at`)이 되면 Claude Code가
+스크립트를 다시 실행하므로 `cold` 전환은 주기와 상관없이 바로 반영됩니다.
 
 Claude Code를 재시작하면 상태 바가 표시됩니다.
 
@@ -302,6 +344,7 @@ bash scripts/release.sh 3.5.0
 | 비용이 $0.00 | 첫 API 응답 전까지 비용 데이터 없음 |
 | PR 번호가 클릭 안 됨 | OSC 8 지원 터미널 필요 (iTerm2, Kitty, WezTerm 등) |
 | 한글 닉네임 깨짐 | 터미널 인코딩을 UTF-8로 설정 |
+| 일부 항목이 안 보이거나 줄 끝이 `…`로 잘림 | 터미널 폭이 좁아 [터미널 폭 맞춤](#터미널-폭-맞춤) 규칙대로 숨긴 것. 창을 넓히면 다시 표시됨 |
 
 ## 라이선스
 
