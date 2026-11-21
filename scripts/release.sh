@@ -111,7 +111,16 @@ sed -i.bak "s/## \[Unreleased\]/## [Unreleased]\n\n## [${NEW_VERSION}] - ${TODAY
 rm -f "${CHANGELOG}.bak"
 
 # Update comparison links at bottom
-REPO_URL=$(git remote get-url origin 2>/dev/null | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
+# origin → https://github.com/<owner>/<repo>. SSH remotes may use a host alias
+# from ~/.ssh/config (git@my-github-alias:owner/repo), so any git@<host>: form
+# maps to github.com; credentials in an https remote are dropped.
+to_https_url() {
+  echo "$1" | sed -E \
+    -e 's#\.git$##' \
+    -e 's#^https://[^@/]*@#https://#' \
+    -e 's#^git@[^:]+:#https://github.com/#'
+}
+REPO_URL=$(to_https_url "$(git remote get-url origin 2>/dev/null)")
 if [ -n "$REPO_URL" ]; then
   # Update [Unreleased] link
   sed -i.bak "s|\[Unreleased\]:.*|[Unreleased]: ${REPO_URL}/compare/v${NEW_VERSION}...HEAD|" "$CHANGELOG"
