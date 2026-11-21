@@ -16,13 +16,29 @@ BLU=$'\033[34m'; CYN=$'\033[36m'; MAG=$'\033[35m'; GRY=$'\033[90m'
 
 # ── Parse JSON with Python ────────────────────────────────────────────
 # Values are shell-quoted so free-form fields (session name, PR url) can't
-# break out of the eval below.
+# break out of the eval below. Displayed strings have control characters
+# stripped so they can't inject terminal escape sequences. Fields that are
+# null or absent (used_percentage early in a session, for example) fall back
+# one by one instead of failing the whole parse.
 eval "$(python3 -c "
-import json, sys, shlex
+import json, sys, shlex, re
 from datetime import datetime
+
+CTRL = re.compile(r'[\x00-\x1f\x7f-\x9f]')
 
 def q(v):
     return shlex.quote(str(v))
+
+def s(v):
+    return '' if v is None else CTRL.sub('', str(v))
+
+def num(v):
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return v
+    return 0
+
+def obj(v):
+    return v if isinstance(v, dict) else {}
 
 def reset_str(ts, with_date):
     if ts in (None, '', 'null'):
@@ -40,36 +56,39 @@ def reset_str(ts, with_date):
 
 try:
     d = json.loads(sys.stdin.read())
-    cw = d.get('context_window', {})
-    c = d.get('cost', {})
-    rl = d.get('rate_limits', {})
-    rl5 = rl.get('five_hour', {})
-    rl7 = rl.get('seven_day', {})
-    pr = d.get('pr', {})
-    print(f'MODEL={q(d.get(\"model\", {}).get(\"display_name\", \"—\"))}')
-    print(f'PCT={int(float(cw.get(\"used_percentage\", 0)))}')
-    print(f'TOTAL={int(cw.get(\"context_window_size\", 0))}')
-    print(f'USED={int(cw.get(\"total_input_tokens\", 0)) + int(cw.get(\"total_output_tokens\", 0))}')
-    print(f'COST={float(c.get(\"total_cost_usd\", 0))}')
-    print(f'LINES_ADD={int(c.get(\"total_lines_added\", 0))}')
-    print(f'LINES_DEL={int(c.get(\"total_lines_removed\", 0))}')
-    print(f'CWD={q(d.get(\"workspace\", {}).get(\"current_dir\", \"\"))}')
-    print(f'SESSION_ID={q(d.get(\"session_id\", \"\"))}')
-    print(f'SESSION_NAME={q(d.get(\"session_name\", \"\"))}')
-    print(f'RL_5H_PCT={int(float(rl5.get(\"used_percentage\", 0)))}')
+    cw = obj(d.get('context_window'))
+    c = obj(d.get('cost'))
+    rl = obj(d.get('rate_limits'))
+    rl5 = obj(rl.get('five_hour'))
+    rl7 = obj(rl.get('seven_day'))
+    pr = obj(d.get('pr'))
+    model = obj(d.get('model')).get('display_name')
+    print(f'MODEL={q(\"—\" if model is None else s(model))}')
+    print(f'PCT={int(num(cw.get(\"used_percentage\")))}')
+    print(f'TOTAL={int(num(cw.get(\"context_window_size\")))}')
+    # used_percentage counts input tokens only, so the count matches it
+    print(f'USED={int(num(cw.get(\"total_input_tokens\")))}')
+    print(f'COST={num(c.get(\"total_cost_usd\"))}')
+    print(f'LINES_ADD={int(num(c.get(\"total_lines_added\")))}')
+    print(f'LINES_DEL={int(num(c.get(\"total_lines_removed\")))}')
+    print(f'CWD={q(obj(d.get(\"workspace\")).get(\"current_dir\") or \"\")}')
+    print(f'SESSION_ID={q(s(d.get(\"session_id\")))}')
+    print(f'SESSION_NAME={q(s(d.get(\"session_name\")))}')
+    print(f'RL_5H_PCT={int(num(rl5.get(\"used_percentage\")))}')
     print(f'RL_5H_RESET_STR={q(reset_str(rl5.get(\"resets_at\"), False))}')
-    print(f'RL_7D_PCT={int(float(rl7.get(\"used_percentage\", 0)))}')
+    print(f'RL_7D_PCT={int(num(rl7.get(\"used_percentage\")))}')
     print(f'RL_7D_RESET_STR={q(reset_str(rl7.get(\"resets_at\"), True))}')
-    print(f'EFFORT={q(d.get(\"effort\", {}).get(\"level\", \"\"))}')
-    print(f'FAST_MODE={q(str(d.get(\"fast_mode\", False)).lower())}')
-    print(f'PR_NUM={q(pr.get(\"number\", \"\"))}')
-    print(f'PR_URL={q(pr.get(\"url\", \"\"))}')
-    print(f'PR_STATE={q(pr.get(\"review_state\", \"\"))}')
+    print(f'EFFORT={q(s(obj(d.get(\"effort\")).get(\"level\")))}')
+    print(f'FAST_MODE={\"true\" if d.get(\"fast_mode\") is True else \"false\"}')
+    print(f'PR_NUM={q(s(pr.get(\"number\")))}')
+    print(f'PR_URL={q(s(pr.get(\"url\")))}')
+    print(f'PR_STATE={q(s(pr.get(\"review_state\")))}')
+    print(f'PR_KIND={q(s(pr.get(\"kind\")))}')
 except Exception:
     print('MODEL=\"—\"; PCT=0; TOTAL=0; USED=0; COST=0; LINES_ADD=0; LINES_DEL=0')
     print('CWD=\"\"; SESSION_ID=\"\"; SESSION_NAME=\"\"; EFFORT=\"\"; FAST_MODE=\"false\"')
     print('RL_5H_PCT=0; RL_5H_RESET_STR=\"\"; RL_7D_PCT=0; RL_7D_RESET_STR=\"\"')
-    print('PR_NUM=\"\"; PR_URL=\"\"; PR_STATE=\"\"')
+    print('PR_NUM=\"\"; PR_URL=\"\"; PR_STATE=\"\"; PR_KIND=\"\"')
 " <<< "$input")"
 
 COST_FMT=$(printf '%.2f' "$COST" 2>/dev/null || echo "0.00")
@@ -101,6 +120,8 @@ else
 fi
 
 if cache_is_stale; then
+  # Drop caches of sessions that haven't refreshed for a day (closed sessions)
+  find /tmp/ -maxdepth 1 -name 'lynceus-cache-*' -mmin +1440 -delete 2>/dev/null
   if [ "$USER_SRC" = "git" ]; then
     USER_NAME=$(git -C "$CWD" config user.name 2>/dev/null)
     [ -z "$USER_NAME" ] && USER_NAME=$(whoami 2>/dev/null || echo "unknown")
@@ -162,7 +183,6 @@ FAST_STR=""
 [ "$FAST_MODE" = "true" ] && FAST_STR=" 🚀"
 
 # ── Effort segment ───────────────────────────────────────────────────
-[ -z "$EFFORT" ] && EFFORT="${CLAUDE_EFFORT:-}"
 EFFORT_STR=""
 if [ -n "$EFFORT" ]; then
   case "$EFFORT" in
@@ -187,8 +207,9 @@ if [ -n "$PR_NUM" ]; then
     *)                 PR_MARK="" ;;
   esac
   PR_LABEL="#${PR_NUM}"
+  [ "$PR_KIND" = "mr" ] && PR_LABEL="!${PR_NUM}"   # GitLab merge request
   if [ -n "$PR_URL" ]; then
-    PR_LABEL=$'\033]8;;'"${PR_URL}"$'\a'"#${PR_NUM}"$'\033]8;;\a'
+    PR_LABEL=$'\033]8;;'"${PR_URL}"$'\a'"${PR_LABEL}"$'\033]8;;\a'
   fi
   PR_STR=" ${DIM}|${RST} ${BLD}🔀${RST} ${CYN}${PR_LABEL}${RST}${PR_MARK}"
 fi

@@ -21,40 +21,42 @@ CYN=$'\033[36m'
 MAG=$'\033[35m'
 GRY=$'\033[90m'
 
-# ── Parse JSON ────────────────────────────────────────────────────────
-MODEL=$(echo "$input" | jq -r '.model.display_name // "—"')
-PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
-TOTAL=$(echo "$input" | jq -r '.context_window.context_window_size // 0')
-INPUT_TOK=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
-OUTPUT_TOK=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0')
-COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
-LINES_ADD=$(echo "$input" | jq -r '.cost.total_lines_added // 0')
-LINES_DEL=$(echo "$input" | jq -r '.cost.total_lines_removed // 0')
-CWD=$(echo "$input" | jq -r '.workspace.current_dir // ""')
-SESSION_ID=$(echo "$input" | jq -r '.session_id // ""')
+# ── Parse JSON (one jq call) ──────────────────────────────────────────
+# @sh quotes every value for the eval. Displayed strings have control
+# characters stripped so a session name or PR URL can't inject terminal
+# escape sequences.
+#   session_name: custom (--name / /rename) or AI-generated title, absent for defaults
+#   rate_limits:  Claude Code v2.1.80+
+#   effort.level: Claude Code v2.1.119+, absent when the model has no effort parameter
+#   pr:           open PR for the current branch; pr.kind is "mr" for GitLab (v2.1.234+)
+eval "$(echo "$input" | jq -r '
+  def clean: tostring | gsub("[[:cntrl:]]"; "");
+  def int: if type == "number" then floor else 0 end;
+  @sh "MODEL=\(.model.display_name // "—" | clean)",
+  @sh "PCT=\(.context_window.used_percentage | int)",
+  @sh "TOTAL=\(.context_window.context_window_size | int)",
+  @sh "INPUT_TOK=\(.context_window.total_input_tokens | int)",
+  @sh "COST=\(.cost.total_cost_usd | if type == "number" then . else 0 end)",
+  @sh "LINES_ADD=\(.cost.total_lines_added | int)",
+  @sh "LINES_DEL=\(.cost.total_lines_removed | int)",
+  @sh "CWD=\(.workspace.current_dir // "")",
+  @sh "SESSION_ID=\(.session_id // "" | clean)",
+  @sh "SESSION_NAME=\(.session_name // "" | clean)",
+  @sh "RL_5H_PCT=\(.rate_limits.five_hour.used_percentage | int)",
+  @sh "RL_5H_RESETS=\(.rate_limits.five_hour.resets_at // "" | clean)",
+  @sh "RL_7D_PCT=\(.rate_limits.seven_day.used_percentage | int)",
+  @sh "RL_7D_RESETS=\(.rate_limits.seven_day.resets_at // "" | clean)",
+  @sh "EFFORT=\(.effort.level // "" | clean)",
+  @sh "FAST_MODE=\(.fast_mode // false)",
+  @sh "PR_NUM=\(.pr.number // "" | clean)",
+  @sh "PR_URL=\(.pr.url // "" | clean)",
+  @sh "PR_STATE=\(.pr.review_state // "" | clean)",
+  @sh "PR_KIND=\(.pr.kind // "" | clean)"
+')"
 
-# Session name: custom (--name / /rename) or AI-generated title. Absent for defaults.
-SESSION_NAME=$(echo "$input" | jq -r '.session_name // ""')
-
-# Rate limits (available since Claude Code v1.2.80)
-RL_5H_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // 0' | cut -d. -f1)
-RL_5H_RESETS=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // ""')
-RL_7D_PCT=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // 0' | cut -d. -f1)
-RL_7D_RESETS=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // ""')
-
-# Effort level (available since v2.1.131+)
-EFFORT=$(echo "$input" | jq -r '.effort.level // ""')
-[ -z "$EFFORT" ] && EFFORT="${CLAUDE_EFFORT:-}"
-
-# Fast mode
-FAST_MODE=$(echo "$input" | jq -r '.fast_mode // false')
-
-# Open PR for the current branch
-PR_NUM=$(echo "$input" | jq -r '.pr.number // ""')
-PR_URL=$(echo "$input" | jq -r '.pr.url // ""')
-PR_STATE=$(echo "$input" | jq -r '.pr.review_state // ""')
-
-USED=$((INPUT_TOK + OUTPUT_TOK))
+# used_percentage counts input tokens only (input + cache writes + cache
+# reads, which total_input_tokens already sums), so the count matches it.
+USED=$INPUT_TOK
 
 # ── Format cost ───────────────────────────────────────────────────────
 COST_FMT=$(printf '%.2f' "$COST" 2>/dev/null || echo "0.00")
@@ -88,6 +90,9 @@ else
 fi
 
 if cache_is_stale; then
+  # Drop caches of sessions that haven't refreshed for a day (closed sessions)
+  find /tmp/ -maxdepth 1 -name 'lynceus-cache-*' -mmin +1440 -delete 2>/dev/null
+
   if [ "$USER_SRC" = "git" ]; then
     USER_NAME=$(git -C "$CWD" config user.name 2>/dev/null)
     [ -z "$USER_NAME" ] && USER_NAME=$(whoami 2>/dev/null || echo "unknown")
@@ -218,8 +223,9 @@ if [ -n "$PR_NUM" ]; then
     *)                 PR_MARK="" ;;
   esac
   PR_LABEL="#${PR_NUM}"
+  [ "$PR_KIND" = "mr" ] && PR_LABEL="!${PR_NUM}"   # GitLab merge request
   if [ -n "$PR_URL" ]; then
-    PR_LABEL=$'\033]8;;'"${PR_URL}"$'\a'"#${PR_NUM}"$'\033]8;;\a'
+    PR_LABEL=$'\033]8;;'"${PR_URL}"$'\a'"${PR_LABEL}"$'\033]8;;\a'
   fi
   PR_STR=" ${DIM}|${RST} ${BLD}🔀${RST} ${CYN}${PR_LABEL}${RST}${PR_MARK}"
 fi
